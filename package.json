@@ -1,0 +1,13 @@
+{
+  "name": "galaxy-sim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Galaxy Sim workspace scripts",
+  "scripts": {
+    "dev": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "preview": "npm --prefix client run preview",
+    "dev:server": "node --watch server/server.js",
+    "start": "node server/server.js"
+  }
+}

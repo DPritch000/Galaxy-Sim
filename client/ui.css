@@ -1,0 +1,57 @@
+.panel {
+  background: rgba(15, 20, 32, 0.85);
+  border: 1px solid #29385f;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.panel-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.panel-copy {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: #c7d4f3;
+}
+
+.edu-controls summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.field-row span {
+  font-size: 0.86rem;
+}
+
+.field-row strong {
+  font-size: 0.82rem;
+  color: #9ec1ff;
+}
+
+#regen-system,
+.field-row input[type="range"] {
+  width: 100%;
+}
+
+#regen-system {
+  border-radius: 8px;
+  border: 1px solid #3b4f84;
+  background: #121b30;
+  color: #ecf1ff;
+  padding: 8px;
+}
+
+#regen-system {
+  margin-top: 4px;
+  cursor: pointer;
+}
