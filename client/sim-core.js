@@ -4,9 +4,19 @@ import { bindControls } from "./sim-controls.js";
 import { renderFrame } from "./sim-renderer.js";
 import { circularVelocitySquared, generateBodies } from "./galaxy-generator.js";
 import { getSystemEnergy } from "./analysis-tools.js";
-import { setupPanels } from "./panels.js";
+import { setPanelValues, setupPanels } from "./panels.js";
 import { updateGraph } from "./graph.js";
 import { buildBarnesHutTree, computeAccelerationBarnesHut } from "./barnes-hut.js";
+
+const STABLE_GALAXY_SETTINGS = {
+  particleCount: 5000,
+  gravityStrength: 6,
+  blackHoleStrength: 60,
+  darkMatterStrength: 2300,
+  armTightness: 3.8,
+  timeScale: 0.12,
+  barnesHutTheta: 0.85
+};
 
 const canvas = document.getElementById("sim-canvas");
 const graphPanel = document.getElementById("graph-panel");
@@ -58,7 +68,16 @@ function updateSetting(name, value) {
   }
 }
 
-setupPanels(state.settings, updateSetting, regenerateBodies);
+function applyStableGalaxySettings() {
+  state.settings = {
+    ...state.settings,
+    ...STABLE_GALAXY_SETTINGS
+  };
+  setPanelValues(state.settings);
+  regenerateBodies();
+}
+
+setupPanels(state.settings, updateSetting, regenerateBodies, applyStableGalaxySettings);
 bindControls(state, camera, canvas);
 
 function stepSimulation() {

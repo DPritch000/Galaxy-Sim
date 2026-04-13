@@ -14,7 +14,7 @@ export function renderFrame(ctx, bodies, width, height, camera) {
     }
 
     const alpha = Math.max(0.28, Math.min(1, 1.08 - p.depth / 3000));
-    const size = body.radius * (0.3 + p.scale * 1.2);
+    const size = body.radius * (body.isBulge ? 0.82 : 1) * (0.3 + p.scale * 1.2);
     ctx.globalAlpha = alpha;
     ctx.fillStyle = body.color;
     if (size < 0.7) {

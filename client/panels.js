@@ -21,7 +21,7 @@ function syncControlDisplay(input) {
   }
 }
 
-export function setupPanels(settings, onSettingsChange, onRegenerate) {
+export function setupPanels(settings, onSettingsChange, onRegenerate, onApplyStableGalaxy) {
   const left = document.getElementById("left-panel");
   const right = document.getElementById("right-panel");
 
@@ -81,17 +81,25 @@ export function setupPanels(settings, onSettingsChange, onRegenerate) {
         <input id="barnesHutTheta" type="range" min="0.35" max="1.2" step="0.05" value="${settings.barnesHutTheta}" />
         <strong data-value-for="barnesHutTheta">${formatValue("barnesHutTheta", settings.barnesHutTheta)}</strong>
       </label>
+      <button id="stable-galaxy" type="button">Stable Galaxy</button>
       <button id="regen-system" type="button">Regenerate System</button>
     </details>
   `;
 
   const sliders = Array.from(right.querySelectorAll("input[type='range']"));
+  const stableButton = right.querySelector("#stable-galaxy");
   const regenButton = right.querySelector("#regen-system");
 
   for (const slider of sliders) {
     slider.addEventListener("input", () => {
       syncControlDisplay(slider);
       onSettingsChange(slider.id, Number(slider.value));
+    });
+  }
+
+  if (stableButton) {
+    stableButton.addEventListener("click", () => {
+      onApplyStableGalaxy();
     });
   }
 

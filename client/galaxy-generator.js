@@ -52,6 +52,7 @@ export function generateBodies(
   const cy = height * 0.5;
   const galaxyRadius = Math.min(width, height) * 0.45;
   const bulgeFraction = 0.18;
+  const bulgeInnerRadius = 18;
   const armCount = 2;
   const armSpread = 0.22;
 
@@ -59,7 +60,7 @@ export function generateBodies(
     const temperature = randomRange(0, 1);
     const isBulge = Math.random() < bulgeFraction;
     const radius = isBulge
-      ? galaxyRadius * 0.35 * Math.pow(Math.random(), 0.55)
+      ? bulgeInnerRadius + galaxyRadius * 0.28 * Math.pow(Math.random(), 0.75)
       : sampleExponential(galaxyRadius * 0.18, galaxyRadius);
 
     const armIndex = Math.floor(Math.random() * armCount);
@@ -69,21 +70,21 @@ export function generateBodies(
       ? randomRange(0, Math.PI * 2)
       : spiralAngle + randomNormal() * armSpread;
 
-    const z = isBulge ? randomNormal() * 26 : randomNormal() * 10;
-    const radialJitter = isBulge ? 3.2 : 1.6;
+    const z = isBulge ? randomNormal() * 18 : randomNormal() * 10;
+    const radialJitter = isBulge ? 2.2 : 1.6;
     const x = cx + Math.cos(angle) * radius + randomNormal() * radialJitter;
     const y = cy + Math.sin(angle) * radius + randomNormal() * radialJitter;
 
     const r = Math.max(8, Math.hypot(x - cx, y - cy));
     const vCirc = Math.sqrt(
       circularVelocitySquared(r, galaxyRadius, gravityStrength, blackHoleStrength, darkMatterStrength, count)
-    ) * (isBulge ? 0.72 : 0.98);
+    ) * (isBulge ? 0.84 : 0.98);
     const tangentialX = -Math.sin(angle);
     const tangentialY = Math.cos(angle);
     const radialDirectionX = Math.cos(angle);
     const radialDirectionY = Math.sin(angle);
-    const dispersion = isBulge ? 0.06 : 0.018;
-    const radialDrift = isBulge ? randomRange(-0.035, 0.035) : randomRange(-0.012, 0.012);
+    const dispersion = isBulge ? 0.075 : 0.018;
+    const radialDrift = isBulge ? randomRange(-0.028, 0.028) : randomRange(-0.012, 0.012);
 
     bodies.push({
       id: i + 1,
@@ -100,7 +101,9 @@ export function generateBodies(
         radialDirectionY * radialDrift +
         randomRange(-dispersion, dispersion),
       vz: -z * 0.00075 + randomRange(-0.012, 0.012),
-      radius: randomRange(minRadius, maxRadius),
+      radius: isBulge
+        ? randomRange(minRadius * 0.72, maxRadius * 0.82)
+        : randomRange(minRadius, maxRadius),
       mass: randomRange(0.6, 2.4),
       color: `hsl(${Math.floor(temperature < 0.55 ? randomRange(200, 230) : randomRange(35, 60))} 95% ${Math.floor(randomRange(72, 92))}%)`
     });
