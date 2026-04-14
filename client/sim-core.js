@@ -10,11 +10,11 @@ import { buildBarnesHutTree, computeAccelerationBarnesHut } from "./barnes-hut.j
 
 const STABLE_GALAXY_SETTINGS = {
   particleCount: 5000,
-  gravityStrength: 6,
-  blackHoleStrength: 60,
-  darkMatterStrength: 2300,
-  armTightness: 3.8,
-  timeScale: 0.12,
+  gravityStrength: 5,
+  blackHoleStrength: 45,
+  darkMatterStrength: 1800,
+  armTightness: 2.8,
+  timeScale: 0.09,
   barnesHutTheta: 0.85
 };
 
@@ -29,6 +29,7 @@ const camera = new Camera(SIM_CONFIG.width, SIM_CONFIG.height);
 
 const state = {
   paused: false,
+  simTime: 0,
   settings: {
     ...SIM_CONFIG.defaults
   },
@@ -53,6 +54,7 @@ function regenerateBodies() {
     state.settings.darkMatterStrength,
     state.settings.armTightness
   );
+  state.simTime = 0;
 }
 
 function updateSetting(name, value) {
@@ -84,13 +86,23 @@ function stepSimulation() {
   const { gravityStrength, timeScale, barnesHutTheta, darkMatterStrength } = state.settings;
   const dt = timeScale;
   const bodies = state.bodies;
-  const { stellar, halo, coreVertical, supportRelaxation, radialDamping } = SIM_CONFIG.forceScale;
-  const { coreRadius, haloCoreRadius } = SIM_CONFIG.structure;
+  const {
+    stellar,
+    halo,
+    coreVertical,
+    supportRelaxation,
+    radialDamping,
+    radialCooling,
+    verticalCooling,
+    supportRampTime
+  } = SIM_CONFIG.forceScale;
+  const { coreRadius, haloCoreRadius, localSoftening } = SIM_CONFIG.structure;
   const cx = SIM_CONFIG.width * 0.5;
   const cy = SIM_CONFIG.height * 0.5;
   const cz = 0;
   const galaxyRadius = Math.min(SIM_CONFIG.width, SIM_CONFIG.height) * 0.45;
   const tree = buildBarnesHutTree(bodies, SIM_CONFIG.width, SIM_CONFIG.height);
+  const formationBlend = Math.max(0, Math.min(1, state.simTime / Math.max(1, supportRampTime)));
   const blackHoleStrength = state.settings.blackHoleStrength;
   const coreRadiusSq = coreRadius * coreRadius;
   const haloCoreRadiusSq = haloCoreRadius * haloCoreRadius;
@@ -101,7 +113,8 @@ function stepSimulation() {
       tree,
       body,
       barnesHutTheta,
-      gravityStrength * stellar
+      gravityStrength * stellar,
+      localSoftening
     );
 
     const dx = cx - body.x;
@@ -134,16 +147,23 @@ function stepSimulation() {
           state.settings.darkMatterStrength,
           state.settings.particleCount
         )
-      ) * 0.96;
+      ) * 0.96 * (body.orbitBias || 1);
       const tangentialDelta = targetTangential - tangentialVelocity;
+      const inner = galaxyRadius * 0.28;
+      const outer = galaxyRadius * 0.98;
+      const band = Math.max(0, Math.min(1, (radius - inner) / Math.max(1, outer - inner)));
+      const supportWeight = band * (1 - 0.35 * band);
 
-      body.vx += tangentX * tangentialDelta * supportRelaxation;
-      body.vy += tangentY * tangentialDelta * supportRelaxation;
+      body.vx += tangentX * tangentialDelta * supportRelaxation * supportWeight * formationBlend;
+      body.vy += tangentY * tangentialDelta * supportRelaxation * supportWeight * formationBlend;
 
       const radialVelocity = body.vx * (radialX / radius) + body.vy * (radialY / radius);
-      body.vx -= (radialX / radius) * radialVelocity * radialDamping;
-      body.vy -= (radialY / radius) * radialVelocity * radialDamping;
+      const cooling = radialDamping * supportWeight + radialCooling * (1 - formationBlend) * 0.6;
+      body.vx -= (radialX / radius) * radialVelocity * cooling;
+      body.vy -= (radialY / radius) * radialVelocity * cooling;
     }
+
+    body.vz *= 1 - verticalCooling * (1 - formationBlend) * dt;
 
     const speed = Math.hypot(body.vx, body.vy, body.vz);
     if (speed > maxSpeed) {
@@ -157,6 +177,8 @@ function stepSimulation() {
     body.y += body.vy * dt;
     body.z += body.vz * dt;
   }
+
+  state.simTime += dt;
 }
 
 function tick() {

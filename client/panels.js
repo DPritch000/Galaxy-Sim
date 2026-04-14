@@ -34,7 +34,8 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
       <p class="panel-copy">The black hole slider is intentionally softened so it shapes the core instead of swallowing the whole disk.</p>
       <p class="panel-copy">The dark matter halo supports the outer disk so stars do not all fall inward.</p>
       <p class="panel-copy">Star-to-star gravity is softened internally so the disk behaves more like a collisionless galaxy than a sticky star cluster.</p>
-      <p class="panel-copy">The disk now starts with seeded spiral arms and a rotation curve matched to the current mass model.</p>
+      <p class="panel-copy">Initial conditions now start as a star cloud so you can observe galaxy formation over time.</p>
+      <p class="panel-copy">Spiral Arm Tightness acts as initial spin/organization and influences how quickly arms emerge.</p>
       <p class="panel-copy">100,000 particles is experimental and can run slowly on CPU.</p>
     `;
   }

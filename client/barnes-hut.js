@@ -139,12 +139,12 @@ export function buildBarnesHutTree(bodies, width, height) {
   return root;
 }
 
-export function computeAccelerationBarnesHut(root, body, theta, gravityStrength) {
+export function computeAccelerationBarnesHut(root, body, theta, gravityStrength, softeningLength = 14) {
   let ax = 0;
   let ay = 0;
   let az = 0;
   const stack = [root];
-  const epsilonSq = 0.25;
+  const epsilonSq = softeningLength * softeningLength;
 
   while (stack.length > 0) {
     const node = stack.pop();

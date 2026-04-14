@@ -9,9 +9,15 @@ function randomNormal() {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-function sampleExponential(scale, maxValue) {
-  const value = -scale * Math.log(1 - Math.random());
-  return Math.min(value, maxValue);
+function randomUnitVector() {
+  const theta = randomRange(0, Math.PI * 2);
+  const z = randomRange(-1, 1);
+  const planar = Math.sqrt(1 - z * z);
+  return {
+    x: Math.cos(theta) * planar,
+    y: Math.sin(theta) * planar,
+    z
+  };
 }
 
 export function circularVelocitySquared(
@@ -50,57 +56,55 @@ export function generateBodies(
   const maxRadius = 0.28 + 0.16 * densityScale;
   const cx = width * 0.5;
   const cy = height * 0.5;
-  const galaxyRadius = Math.min(width, height) * 0.45;
-  const bulgeFraction = 0.18;
-  const bulgeInnerRadius = 18;
-  const armCount = 2;
-  const armSpread = 0.22;
+  const galaxyRadius = Math.min(width, height) * 0.48;
+  const cloudRadius = galaxyRadius * 0.92;
+  const spinBase = 0.46 + armTightness * 0.05;
 
   for (let i = 0; i < count; i += 1) {
     const temperature = randomRange(0, 1);
-    const isBulge = Math.random() < bulgeFraction;
-    const radius = isBulge
-      ? bulgeInnerRadius + galaxyRadius * 0.28 * Math.pow(Math.random(), 0.75)
-      : sampleExponential(galaxyRadius * 0.18, galaxyRadius);
+    const dir = randomUnitVector();
+    const radius = cloudRadius * Math.cbrt(Math.random());
+    const px = dir.x * radius;
+    const py = dir.y * radius;
+    const pz = dir.z * radius * 0.9;
+    const x = cx + px;
+    const y = cy + py;
+    const z = pz;
 
-    const armIndex = Math.floor(Math.random() * armCount);
-    const armBaseAngle = (armIndex / armCount) * Math.PI * 2;
-    const spiralAngle = armBaseAngle + (radius / galaxyRadius) * armTightness * Math.PI * 2;
-    const angle = isBulge
-      ? randomRange(0, Math.PI * 2)
-      : spiralAngle + randomNormal() * armSpread;
+    const rPlanar = Math.max(4, Math.hypot(px, py));
+    const r3 = Math.max(6, Math.hypot(px, py, pz));
+    const isBulge = r3 < galaxyRadius * 0.22;
 
-    const z = isBulge ? randomNormal() * 18 : randomNormal() * 10;
-    const radialJitter = isBulge ? 2.2 : 1.6;
-    const x = cx + Math.cos(angle) * radius + randomNormal() * radialJitter;
-    const y = cy + Math.sin(angle) * radius + randomNormal() * radialJitter;
-
-    const r = Math.max(8, Math.hypot(x - cx, y - cy));
     const vCirc = Math.sqrt(
-      circularVelocitySquared(r, galaxyRadius, gravityStrength, blackHoleStrength, darkMatterStrength, count)
-    ) * (isBulge ? 0.84 : 0.98);
-    const tangentialX = -Math.sin(angle);
-    const tangentialY = Math.cos(angle);
-    const radialDirectionX = Math.cos(angle);
-    const radialDirectionY = Math.sin(angle);
-    const dispersion = isBulge ? 0.075 : 0.018;
-    const radialDrift = isBulge ? randomRange(-0.028, 0.028) : randomRange(-0.012, 0.012);
+      circularVelocitySquared(rPlanar, galaxyRadius, gravityStrength, blackHoleStrength, darkMatterStrength, count)
+    ) * (isBulge ? 0.35 : 0.45);
+
+    const tangentialX = -py / rPlanar;
+    const tangentialY = px / rPlanar;
+    const radialFraction = Math.min(1, rPlanar / cloudRadius);
+    const spinScatter = randomRange(0.55, 1.35);
+    const spinVelocity = vCirc * spinBase * Math.pow(radialFraction, 0.35) * spinScatter;
+    const dispersion = isBulge ? 0.08 : 0.05;
+    const collapseBias = isBulge ? 0.0 : randomRange(-0.006, 0.006);
+    const radialDirectionX = px / rPlanar;
+    const radialDirectionY = py / rPlanar;
 
     bodies.push({
       id: i + 1,
       isBulge,
+      orbitBias: randomRange(0.72, 1.28),
       x,
       y,
       z,
       vx:
-        tangentialX * vCirc +
-        radialDirectionX * radialDrift +
+        tangentialX * spinVelocity -
+        radialDirectionX * collapseBias +
         randomRange(-dispersion, dispersion),
       vy:
-        tangentialY * vCirc +
-        radialDirectionY * radialDrift +
+        tangentialY * spinVelocity -
+        radialDirectionY * collapseBias +
         randomRange(-dispersion, dispersion),
-      vz: -z * 0.00075 + randomRange(-0.012, 0.012),
+      vz: -z * 0.0004 + randomRange(-0.04, 0.04),
       radius: isBulge
         ? randomRange(minRadius * 0.72, maxRadius * 0.82)
         : randomRange(minRadius, maxRadius),
