@@ -9,6 +9,9 @@ export class Camera {
     this.distance = 720;
     this.zoom = 1;
     this.focalLength = 820;
+    this.focusX = width * 0.5;
+    this.focusY = height * 0.5;
+    this.focusZ = 0;
   }
 
   resize(width, height) {
@@ -30,13 +33,19 @@ export class Camera {
     this.distance = Math.max(220, Math.min(2200, this.distance + delta));
   }
 
+  setFocus(x, y, z = 0) {
+    this.focusX = x;
+    this.focusY = y;
+    this.focusZ = z;
+  }
+
   project(body) {
     const cx = this.width * 0.5;
     const cy = this.height * 0.5;
 
-    const x0 = body.x - cx;
-    const y0 = body.y - cy;
-    const z0 = body.z || 0;
+    const x0 = body.x - this.focusX;
+    const y0 = body.y - this.focusY;
+    const z0 = (body.z || 0) - this.focusZ;
 
     const cosY = Math.cos(this.yaw);
     const sinY = Math.sin(this.yaw);

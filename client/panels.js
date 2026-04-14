@@ -74,7 +74,7 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
       </label>
       <label class="field-row">
         <span>Time Scale</span>
-        <input id="timeScale" type="range" min="0.25" max="2" step="0.05" value="${settings.timeScale}" />
+        <input id="timeScale" type="range" min="0.05" max="10" step="0.1" value="${settings.timeScale}" />
         <strong data-value-for="timeScale">${formatValue("timeScale", settings.timeScale)}</strong>
       </label>
       <label class="field-row">
