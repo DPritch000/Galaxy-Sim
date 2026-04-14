@@ -164,7 +164,14 @@ function tick() {
     stepSimulation();
   }
 
-  renderFrame(ctx, state.bodies, SIM_CONFIG.width, SIM_CONFIG.height, camera);
+  renderFrame(
+    ctx,
+    state.bodies,
+    SIM_CONFIG.width,
+    SIM_CONFIG.height,
+    camera,
+    state.settings.blackHoleStrength
+  );
   if (graphPanel) {
     updateGraph(graphPanel, getSystemEnergy(state.bodies));
   }
