@@ -1,9 +1,9 @@
-function drawBlackHole(ctx, camera, width, height, blackHoleStrength, blackHoleBody) {
-  if (blackHoleStrength <= 0 || !blackHoleBody) {
+function drawBlackHole(ctx, camera, width, height, blackHoleStrength) {
+  if (blackHoleStrength <= 0) {
     return;
   }
 
-  const center = camera.project(blackHoleBody);
+  const center = camera.project({ x: width * 0.5, y: height * 0.5, z: 0 });
   if (!center) {
     return;
   }
@@ -34,12 +34,12 @@ function drawBlackHole(ctx, camera, width, height, blackHoleStrength, blackHoleB
   ctx.stroke();
 }
 
-export function renderFrame(ctx, bodies, width, height, camera, blackHoleStrength = 0, blackHoleBody = null) {
+export function renderFrame(ctx, bodies, width, height, camera, blackHoleStrength = 0) {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#05070f";
   ctx.fillRect(0, 0, width, height);
 
-  drawBlackHole(ctx, camera, width, height, blackHoleStrength, blackHoleBody);
+  drawBlackHole(ctx, camera, width, height, blackHoleStrength);
 
   const count = bodies.length;
   const stride = count > 90000 ? 4 : count > 50000 ? 3 : count > 20000 ? 2 : 1;

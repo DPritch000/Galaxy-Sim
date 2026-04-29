@@ -321,8 +321,7 @@ function tick() {
     SIM_CONFIG.width,
     SIM_CONFIG.height,
     camera,
-    state.settings.blackHoleStrength,
-    state.blackHole
+    state.settings.blackHoleStrength
   );
   if (graphPanel) {
     updateGraph(graphPanel, getSystemEnergy(state.bodies));
