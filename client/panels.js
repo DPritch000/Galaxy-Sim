@@ -11,6 +11,12 @@ function formatValue(id, value) {
   if (id === "timeScale") {
     return `${Number(value).toFixed(2)}x`;
   }
+  if (id === "starMass") {
+    return `${Number(value).toFixed(1)} M☉`;
+  }
+  if (id === "planetCount") {
+    return String(Math.round(value));
+  }
   return String(value);
 }
 
@@ -21,7 +27,7 @@ function syncControlDisplay(input) {
   }
 }
 
-export function setupPanels(settings, onSettingsChange, onRegenerate, onApplyStableGalaxy) {
+export function setupPanels(settings, onSettingsChange, onRegenerate, onApplyStableGalaxy, onApplyCloudCollapse, onStartPlanets) {
   const left = document.getElementById("left-panel");
   const right = document.getElementById("right-panel");
 
@@ -35,6 +41,7 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
       <p class="panel-copy">The dark matter halo supports the outer disk so stars do not all fall inward.</p>
       <p class="panel-copy">Star-to-star gravity is softened internally so the disk behaves more like a collisionless galaxy than a sticky star cluster.</p>
       <p class="panel-copy">The disk now starts with seeded spiral arms and a rotation curve matched to the current mass model.</p>
+      <p class="panel-copy"><strong>Cloud Collapse</strong> starts from a random sphere with sub-virial rotation. Z-velocity damping flattens it to a disk; orbital support ramps up over ~2000 steps so the galaxy structure emerges from gravity rather than being pre-seeded.</p>
       <p class="panel-copy">100,000 particles is experimental and can run slowly on CPU.</p>
     `;
   }
@@ -44,51 +51,111 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
   }
 
   right.innerHTML = `
-    <details class="edu-controls" open>
-      <summary>Educational Controls</summary>
+    <div class="panel-tabs" role="tablist" aria-label="Right panel tabs">
+      <button class="panel-tab is-active" id="tab-controls" type="button" role="tab" aria-controls="tab-pane-controls" aria-selected="true" data-tab-target="controls">Controls</button>
+      <button class="panel-tab" id="tab-seeded" type="button" role="tab" aria-controls="tab-pane-seeded" aria-selected="false" data-tab-target="seeded">Seeded Spiral</button>
+      <button class="panel-tab" id="tab-formation" type="button" role="tab" aria-controls="tab-pane-formation" aria-selected="false" data-tab-target="formation">Galaxy Formation</button>
+      <button class="panel-tab" id="tab-planets" type="button" role="tab" aria-controls="tab-pane-planets" aria-selected="false" data-tab-target="planets">Planets</button>
+    </div>
+
+    <section class="tab-pane is-active" id="tab-pane-controls" role="tabpanel" aria-labelledby="tab-controls" data-tab-pane="controls">
+      <details class="edu-controls" open>
+        <summary>Simulation Parameters</summary>
+        <label class="field-row">
+          <span>Particles</span>
+          <input id="particleCount" type="range" min="500" max="100000" step="500" value="${settings.particleCount}" />
+          <strong data-value-for="particleCount">${formatValue("particleCount", settings.particleCount)}</strong>
+        </label>
+        <label class="field-row">
+          <span>Gravity Strength</span>
+          <input id="gravityStrength" type="range" min="1" max="80" step="1" value="${settings.gravityStrength}" />
+          <strong data-value-for="gravityStrength">${settings.gravityStrength}</strong>
+        </label>
+        <label class="field-row">
+          <span>Black Hole Strength</span>
+          <input id="blackHoleStrength" type="range" min="0" max="2500" step="25" value="${settings.blackHoleStrength}" />
+          <strong data-value-for="blackHoleStrength">${Math.round(settings.blackHoleStrength)}</strong>
+        </label>
+        <label class="field-row">
+          <span>Dark Matter Halo</span>
+          <input id="darkMatterStrength" type="range" min="0" max="4000" step="50" value="${settings.darkMatterStrength}" />
+          <strong data-value-for="darkMatterStrength">${Math.round(settings.darkMatterStrength)}</strong>
+        </label>
+        <label class="field-row">
+          <span>Spiral Arm Tightness</span>
+          <input id="armTightness" type="range" min="1.2" max="6.5" step="0.1" value="${settings.armTightness}" />
+          <strong data-value-for="armTightness">${formatValue("armTightness", settings.armTightness)}</strong>
+        </label>
+        <label class="field-row">
+          <span>Time Scale</span>
+          <input id="timeScale" type="range" min="0.25" max="2" step="0.05" value="${settings.timeScale}" />
+          <strong data-value-for="timeScale">${formatValue("timeScale", settings.timeScale)}</strong>
+        </label>
+        <label class="field-row">
+          <span>Approximation (theta)</span>
+          <input id="barnesHutTheta" type="range" min="0.35" max="1.2" step="0.05" value="${settings.barnesHutTheta}" />
+          <strong data-value-for="barnesHutTheta">${formatValue("barnesHutTheta", settings.barnesHutTheta)}</strong>
+        </label>
+      </details>
+    </section>
+
+    <section class="tab-pane" id="tab-pane-seeded" role="tabpanel" aria-labelledby="tab-seeded" data-tab-pane="seeded">
+      <h4 class="panel-title">Seeded Spiral Galaxy</h4>
+      <p class="panel-copy">A pre-formed galaxy with spiral arm structure and stable circular orbits.</p>
+      <p class="panel-copy">Adjust parameters on the <strong>Controls</strong> tab and click below to regenerate.</p>
+      <button id="seeded-start" class="panel-button" type="button">Generate Seeded Galaxy</button>
+    </section>
+
+    <section class="tab-pane" id="tab-pane-formation" role="tabpanel" aria-labelledby="tab-formation" data-tab-pane="formation">
+      <h4 class="panel-title">Galaxy Formation From Rotating Bodies</h4>
+      <p class="panel-copy">Start from a random rotating cloud and let gravity collapse the system into a disk around the central black hole.</p>
+      <p class="panel-copy">Tip: Lower <strong>Time Scale</strong> for a smoother educational view of arm emergence.</p>
+      <button id="formation-start" class="panel-button" type="button">Start Formation Run</button>
+      <button id="formation-reset" class="panel-button" type="button">Return To Seeded Spiral</button>
+    </section>
+
+    <section class="tab-pane" id="tab-pane-planets" role="tabpanel" aria-labelledby="tab-planets" data-tab-pane="planets">
+      <h4 class="panel-title">Planetary Orbits</h4>
+      <p class="panel-copy">Simulate planets orbiting a central star. Adjust parameters and start the simulation.</p>
       <label class="field-row">
-        <span>Particles</span>
-        <input id="particleCount" type="range" min="500" max="100000" step="500" value="${settings.particleCount}" />
-        <strong data-value-for="particleCount">${formatValue("particleCount", settings.particleCount)}</strong>
+        <span>Star Mass</span>
+        <input id="starMass" type="range" min="0.1" max="5" step="0.1" value="${settings.starMass || 1.0}" />
+        <strong data-value-for="starMass">${(settings.starMass || 1.0).toFixed(1)} M☉</strong>
       </label>
       <label class="field-row">
-        <span>Gravity Strength</span>
-        <input id="gravityStrength" type="range" min="1" max="80" step="1" value="${settings.gravityStrength}" />
-        <strong data-value-for="gravityStrength">${settings.gravityStrength}</strong>
+        <span>Number of Planets</span>
+        <input id="planetCount" type="range" min="1" max="100" step="1" value="${settings.planetCount || 8}" />
+        <strong data-value-for="planetCount">${settings.planetCount || 8}</strong>
       </label>
-      <label class="field-row">
-        <span>Black Hole Strength</span>
-        <input id="blackHoleStrength" type="range" min="0" max="2500" step="25" value="${settings.blackHoleStrength}" />
-        <strong data-value-for="blackHoleStrength">${Math.round(settings.blackHoleStrength)}</strong>
-      </label>
-      <label class="field-row">
-        <span>Dark Matter Halo</span>
-        <input id="darkMatterStrength" type="range" min="0" max="4000" step="50" value="${settings.darkMatterStrength}" />
-        <strong data-value-for="darkMatterStrength">${Math.round(settings.darkMatterStrength)}</strong>
-      </label>
-      <label class="field-row">
-        <span>Spiral Arm Tightness</span>
-        <input id="armTightness" type="range" min="1.2" max="6.5" step="0.1" value="${settings.armTightness}" />
-        <strong data-value-for="armTightness">${formatValue("armTightness", settings.armTightness)}</strong>
-      </label>
-      <label class="field-row">
-        <span>Time Scale</span>
-        <input id="timeScale" type="range" min="0.25" max="2" step="0.05" value="${settings.timeScale}" />
-        <strong data-value-for="timeScale">${formatValue("timeScale", settings.timeScale)}</strong>
-      </label>
-      <label class="field-row">
-        <span>Approximation (theta)</span>
-        <input id="barnesHutTheta" type="range" min="0.35" max="1.2" step="0.05" value="${settings.barnesHutTheta}" />
-        <strong data-value-for="barnesHutTheta">${formatValue("barnesHutTheta", settings.barnesHutTheta)}</strong>
-      </label>
-      <button id="stable-galaxy" type="button">Stable Galaxy</button>
-      <button id="regen-system" type="button">Regenerate System</button>
-    </details>
+      <button id="planets-start" class="panel-button" type="button">Start Planet Simulation</button>
+    </section>
   `;
 
   const sliders = Array.from(right.querySelectorAll("input[type='range']"));
-  const stableButton = right.querySelector("#stable-galaxy");
-  const regenButton = right.querySelector("#regen-system");
+  const tabButtons = Array.from(right.querySelectorAll("[data-tab-target]"));
+  const tabPanes = Array.from(right.querySelectorAll("[data-tab-pane]"));
+  const seededButton = right.querySelector("#seeded-start");
+  const formationStartButton = right.querySelector("#formation-start");
+  const formationResetButton = right.querySelector("#formation-reset");
+  const planetsButton = right.querySelector("#planets-start");
+
+  function activateTab(target) {
+    for (const button of tabButtons) {
+      const isActive = button.dataset.tabTarget === target;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-selected", isActive ? "true" : "false");
+    }
+    for (const pane of tabPanes) {
+      const isActive = pane.dataset.tabPane === target;
+      pane.classList.toggle("is-active", isActive);
+    }
+  }
+
+  for (const tabButton of tabButtons) {
+    tabButton.addEventListener("click", () => {
+      activateTab(tabButton.dataset.tabTarget);
+    });
+  }
 
   for (const slider of sliders) {
     slider.addEventListener("input", () => {
@@ -97,15 +164,31 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
     });
   }
 
-  if (stableButton) {
-    stableButton.addEventListener("click", () => {
-      onApplyStableGalaxy();
+  if (seededButton) {
+    seededButton.addEventListener("click", () => {
+      onRegenerate();
+      activateTab("seeded");
     });
   }
 
-  if (regenButton) {
-    regenButton.addEventListener("click", () => {
+  if (formationStartButton) {
+    formationStartButton.addEventListener("click", () => {
+      onApplyCloudCollapse();
+      activateTab("formation");
+    });
+  }
+
+  if (formationResetButton) {
+    formationResetButton.addEventListener("click", () => {
       onRegenerate();
+      activateTab("seeded");
+    });
+  }
+
+  if (planetsButton) {
+    planetsButton.addEventListener("click", () => {
+      onStartPlanets();
+      activateTab("planets");
     });
   }
 }
