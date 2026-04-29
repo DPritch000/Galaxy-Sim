@@ -2,7 +2,7 @@ import { SIM_CONFIG } from "./sim-config.js";
 import { Camera } from "./camera.js";
 import { bindControls } from "./sim-controls.js";
 import { renderFrame } from "./sim-renderer.js";
-import { generateBodies } from "./galaxy-generator.js";
+import { circularVelocitySquared, generateBodies } from "./galaxy-generator.js";
 import { getSystemEnergy } from "./analysis-tools.js";
 import { setPanelValues, setupPanels } from "./panels.js";
 import { updateGraph } from "./graph.js";
@@ -11,11 +11,11 @@ import { buildBarnesHutTree, computeAccelerationBarnesHut } from "./barnes-hut.j
 const STABLE_GALAXY_SETTINGS = {
   particleCount: 5000,
   gravityStrength: 8,
-  blackHoleStrength: 45,
-  darkMatterStrength: 1500,
+  blackHoleStrength: 62,
+  darkMatterStrength: 1650,
   armTightness: 1.7,
-  rotationStrength: 1.2,
-  timeScale: 0.09,
+  rotationStrength: 1.12,
+  timeScale: 0.08,
   barnesHutTheta: 0.85
 };
 
@@ -142,6 +142,12 @@ function stepSimulation() {
   const blackHoleSofteningNow = blackHoleSoftening * softeningScale;
   const blackHole = state.blackHole;
   blackHole.mass = Math.max(0, state.settings.blackHoleStrength * SIM_CONFIG.structure.blackHoleMassScale);
+  blackHole.x = SIM_CONFIG.width * 0.5;
+  blackHole.y = SIM_CONFIG.height * 0.5;
+  blackHole.z = 0;
+  blackHole.vx = 0;
+  blackHole.vy = 0;
+  blackHole.vz = 0;
 
   let sumMass = 0;
   let comX = 0;
@@ -156,9 +162,13 @@ function stepSimulation() {
     comX += body.x * body.mass;
     comY += body.y * body.mass;
     comZ += body.z * body.mass;
-    lx += body.mass * (body.y * body.vz - body.z * body.vy);
-    ly += body.mass * (body.z * body.vx - body.x * body.vz);
-    lz += body.mass * (body.x * body.vy - body.y * body.vx);
+
+    const rx = body.x - blackHole.x;
+    const ry = body.y - blackHole.y;
+    const rz = body.z - blackHole.z;
+    lx += body.mass * (ry * body.vz - rz * body.vy);
+    ly += body.mass * (rz * body.vx - rx * body.vz);
+    lz += body.mass * (rx * body.vy - ry * body.vx);
   }
 
   if (sumMass > 0) {
@@ -202,12 +212,35 @@ function stepSimulation() {
     const haloAy = dy * haloScale;
     const haloAz = dz * haloScale * 0.25;
 
-    const relX = body.x - comX;
-    const relY = body.y - comY;
-    const relZ = body.z - comZ;
+    const relX = body.x - blackHole.x;
+    const relY = body.y - blackHole.y;
+    const relZ = body.z - blackHole.z;
     const relRadius = Math.hypot(relX, relY, relZ);
     const densityProxy = 1 / (1 + (relRadius * relRadius) / (formation.coolingRadius * formation.coolingRadius));
     const cooling = formation.coolingStrength * settleT * densityProxy;
+    const planarRadius = Math.max(4, Math.hypot(relX, relY));
+    const radialPlanar = {
+      x: relX / planarRadius,
+      y: relY / planarRadius,
+      z: 0
+    };
+    const tangentialPlanar = {
+      x: -relY / planarRadius,
+      y: relX / planarRadius,
+      z: 0
+    };
+    const vRad = body.vx * radialPlanar.x + body.vy * radialPlanar.y;
+    const vTan = body.vx * tangentialPlanar.x + body.vy * tangentialPlanar.y;
+    const targetVCirc = Math.sqrt(
+      circularVelocitySquared(
+        planarRadius,
+        Math.min(SIM_CONFIG.width, SIM_CONFIG.height) * 0.48,
+        gravityStrength,
+        state.settings.blackHoleStrength,
+        darkMatterStrength,
+        bodies.length
+      )
+    );
 
     const axis = state.angularAxis;
     const vParallel = body.vx * axis.x + body.vy * axis.y + body.vz * axis.z;
@@ -222,6 +255,16 @@ function stepSimulation() {
     body.vy += (ay + haloAy + settleAy) * dt;
     body.vz += (az + haloAz + settleAz) * dt;
 
+    const orbitSupport = formation.rotationalSupport * settleT;
+    const radialDamping = formation.radialDamping * settleT;
+    const verticalDamping = formation.verticalDamping * flattenT;
+    const dvTan = (targetVCirc - vTan) * orbitSupport;
+    body.vx += tangentialPlanar.x * dvTan * dt;
+    body.vy += tangentialPlanar.y * dvTan * dt;
+    body.vx += radialPlanar.x * (-vRad * radialDamping) * dt;
+    body.vy += radialPlanar.y * (-vRad * radialDamping) * dt;
+    body.vz += -body.vz * verticalDamping * dt;
+
     const innerCoreRadius = coreRadius * 0.9;
     if (dist < innerCoreRadius) {
       const inwardSpeed = (body.vx * dx + body.vy * dy + body.vz * dz) / Math.max(1, dist);
@@ -233,10 +276,9 @@ function stepSimulation() {
       }
     }
 
-    const coolFactor = Math.max(0.9, 1 - cooling * dt);
-    body.vx *= coolFactor;
-    body.vy *= coolFactor;
-    body.vz *= coolFactor;
+    body.vx -= radialPlanar.x * vRad * cooling * dt;
+    body.vy -= radialPlanar.y * vRad * cooling * dt;
+    body.vz *= Math.max(0.9, 1 - cooling * dt * 1.4);
 
     const speed = Math.hypot(body.vx, body.vy, body.vz);
     if (speed > maxSpeed) {
@@ -252,32 +294,13 @@ function stepSimulation() {
   }
 
   if (blackHole.mass > 0) {
-    const { ax, ay, az } = computeAccelerationBarnesHut(
-      starTree,
-      blackHole,
-      barnesHutTheta,
-      gravityStrength * stellar,
-      blackHoleSofteningNow
-    );
-    const centerPull = formation.blackHoleCentering;
-    const springAx = (comX - blackHole.x) * centerPull;
-    const springAy = (comY - blackHole.y) * centerPull;
-    const springAz = (comZ - blackHole.z) * centerPull * 0.4;
-
-    blackHole.vx += (ax + springAx) * dt;
-    blackHole.vy += (ay + springAy) * dt;
-    blackHole.vz += (az + springAz) * dt;
-
-    const bhDamping =
-      formation.blackHoleDampingEarly +
-      (formation.blackHoleDampingLate - formation.blackHoleDampingEarly) * collapseT;
-    blackHole.vx *= bhDamping;
-    blackHole.vy *= bhDamping;
-    blackHole.vz *= bhDamping;
-
-    blackHole.x += blackHole.vx * dt;
-    blackHole.y += blackHole.vy * dt;
-    blackHole.z += blackHole.vz * dt;
+    // Keep the BH fixed so all orbital motion is centered on it.
+    blackHole.x = SIM_CONFIG.width * 0.5;
+    blackHole.y = SIM_CONFIG.height * 0.5;
+    blackHole.z = 0;
+    blackHole.vx = 0;
+    blackHole.vy = 0;
+    blackHole.vz = 0;
   }
 
   state.stepCount += 1;

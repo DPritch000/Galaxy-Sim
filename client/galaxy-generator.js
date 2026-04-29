@@ -20,14 +20,6 @@ function randomUnitVector() {
   };
 }
 
-function cross(a, b) {
-  return {
-    x: a.y * b.z - a.z * b.y,
-    y: a.z * b.x - a.x * b.z,
-    z: a.x * b.y - a.y * b.x
-  };
-}
-
 export function circularVelocitySquared(
   radius,
   galaxyRadius,
@@ -66,25 +58,51 @@ export function generateBodies(
   const cx = width * 0.5;
   const cy = height * 0.5;
   const galaxyRadius = Math.min(width, height) * 0.48;
-  const cloudRadius = galaxyRadius * 0.92;
-  const spinBase = 0.96 + armTightness * 0.03;
-  const spinAxis = randomUnitVector();
+  const diskRadius = galaxyRadius * 0.94;
+  const diskScaleLength = galaxyRadius * 0.25;
+  const bulgeFraction = 0.18;
+  const armCount = 2;
+  const armPitch = 1.3 + armTightness * 0.48;
+  const armStrength = 0.09 + armTightness * 0.01;
+  const spinBase = 1.02 + armTightness * 0.02;
   const spiralPhase = randomRange(0, Math.PI * 2);
 
   for (let i = 0; i < count; i += 1) {
     const temperature = randomRange(0, 1);
-    const dir = randomUnitVector();
-    const radius = cloudRadius * Math.cbrt(Math.random());
-    const px = dir.x * radius;
-    const py = dir.y * radius;
-    const pz = dir.z * radius * 0.9;
+    const isBulge = Math.random() < bulgeFraction;
+
+    let px;
+    let py;
+    let pz;
+    let armPhase = 0;
+
+    if (isBulge) {
+      const dir = randomUnitVector();
+      const radius = galaxyRadius * 0.24 * Math.cbrt(Math.random());
+      px = dir.x * radius;
+      py = dir.y * radius;
+      pz = dir.z * radius * 0.9;
+    } else {
+      const u = Math.max(1e-6, 1 - Math.random());
+      const baseRadius = Math.min(diskRadius, -diskScaleLength * Math.log(u));
+      const baseTheta = randomRange(0, Math.PI * 2);
+      armPhase = armCount * baseTheta - armPitch * Math.log((baseRadius + 18) / 18) + spiralPhase;
+      const armWave = Math.cos(armPhase);
+      const radius = Math.max(3, Math.min(diskRadius, baseRadius * (1 + armWave * armStrength + randomNormal() * 0.035)));
+      const theta =
+        baseTheta + (Math.sin(armPhase) * 0.07 + randomNormal() * 0.035) / Math.sqrt(1 + radius / 70);
+
+      px = Math.cos(theta) * radius;
+      py = Math.sin(theta) * radius;
+      pz = randomNormal() * (2.6 + radius * 0.009);
+    }
+
     const x = cx + px;
     const y = cy + py;
     const z = pz;
 
     const rPlanar = Math.max(4, Math.hypot(px, py));
     const r3 = Math.max(6, Math.hypot(px, py, pz));
-    const isBulge = r3 < galaxyRadius * 0.22;
 
     const vCirc = Math.sqrt(
       circularVelocitySquared(rPlanar, galaxyRadius, gravityStrength, blackHoleStrength, darkMatterStrength, count)
@@ -95,34 +113,25 @@ export function generateBodies(
       y: py / r3,
       z: pz / r3
     };
-    const tangentialVec = cross(spinAxis, radialDirection);
-    const tangentialMag = Math.hypot(tangentialVec.x, tangentialVec.y, tangentialVec.z);
-    const tangential = tangentialMag > 1e-6
-      ? {
-          x: tangentialVec.x / tangentialMag,
-          y: tangentialVec.y / tangentialMag,
-          z: tangentialVec.z / tangentialMag
-        }
-      : {
-          x: -py / rPlanar,
-          y: px / rPlanar,
-          z: 0
-        };
+    const tangential = {
+      x: -py / rPlanar,
+      y: px / rPlanar,
+      z: 0
+    };
 
-    const radialFraction = Math.min(1, rPlanar / cloudRadius);
-    const azimuth = Math.atan2(py, px);
-    const armSeed = 1 + 0.03 * Math.cos(2 * azimuth + spiralPhase);
-    const spinScatter = randomRange(0.9, 1.08);
-    const support = isBulge ? 0.72 : 1.12;
+    const radialFraction = Math.min(1, rPlanar / diskRadius);
+    const armSeed = isBulge ? 1 : 1 + Math.cos(armPhase) * 0.08;
+    const spinScatter = isBulge ? randomRange(0.82, 1.12) : randomRange(0.96, 1.04);
+    const support = isBulge ? 0.72 : 1.02;
     const spinVelocity =
       vCirc * support * spinBase * Math.max(0.2, rotationStrength) * Math.pow(radialFraction, 0.08) * spinScatter * armSeed;
-    const dispersion = isBulge ? 0.055 : 0.022;
-    const collapseBias = isBulge ? randomRange(-0.003, 0.003) : randomRange(-0.004, 0.003);
+    const dispersion = isBulge ? 0.05 : 0.014;
+    const collapseBias = isBulge ? randomRange(-0.0025, 0.0025) : randomRange(-0.0008, 0.0006);
 
     bodies.push({
       id: i + 1,
       isBulge,
-      orbitBias: randomRange(0.72, 1.28),
+      orbitBias: randomRange(0.9, 1.1),
       x,
       y,
       z,
