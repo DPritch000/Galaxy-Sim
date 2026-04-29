@@ -20,6 +20,14 @@ function randomUnitVector() {
   };
 }
 
+function cross(a, b) {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x
+  };
+}
+
 export function circularVelocitySquared(
   radius,
   galaxyRadius,
@@ -48,7 +56,8 @@ export function generateBodies(
   gravityStrength = 6,
   blackHoleStrength = 60,
   darkMatterStrength = 2200,
-  armTightness = 3.6
+  armTightness = 3.6,
+  rotationStrength = 1
 ) {
   const bodies = [];
   const densityScale = Math.min(1, 220 / Math.max(count, 1));
@@ -58,7 +67,9 @@ export function generateBodies(
   const cy = height * 0.5;
   const galaxyRadius = Math.min(width, height) * 0.48;
   const cloudRadius = galaxyRadius * 0.92;
-  const spinBase = 0.46 + armTightness * 0.05;
+  const spinBase = 0.96 + armTightness * 0.03;
+  const spinAxis = randomUnitVector();
+  const spiralPhase = randomRange(0, Math.PI * 2);
 
   for (let i = 0; i < count; i += 1) {
     const temperature = randomRange(0, 1);
@@ -77,17 +88,36 @@ export function generateBodies(
 
     const vCirc = Math.sqrt(
       circularVelocitySquared(rPlanar, galaxyRadius, gravityStrength, blackHoleStrength, darkMatterStrength, count)
-    ) * (isBulge ? 0.35 : 0.45);
+    );
 
-    const tangentialX = -py / rPlanar;
-    const tangentialY = px / rPlanar;
+    const radialDirection = {
+      x: px / r3,
+      y: py / r3,
+      z: pz / r3
+    };
+    const tangentialVec = cross(spinAxis, radialDirection);
+    const tangentialMag = Math.hypot(tangentialVec.x, tangentialVec.y, tangentialVec.z);
+    const tangential = tangentialMag > 1e-6
+      ? {
+          x: tangentialVec.x / tangentialMag,
+          y: tangentialVec.y / tangentialMag,
+          z: tangentialVec.z / tangentialMag
+        }
+      : {
+          x: -py / rPlanar,
+          y: px / rPlanar,
+          z: 0
+        };
+
     const radialFraction = Math.min(1, rPlanar / cloudRadius);
-    const spinScatter = randomRange(0.55, 1.35);
-    const spinVelocity = vCirc * spinBase * Math.pow(radialFraction, 0.35) * spinScatter;
-    const dispersion = isBulge ? 0.08 : 0.05;
-    const collapseBias = isBulge ? 0.0 : randomRange(-0.006, 0.006);
-    const radialDirectionX = px / rPlanar;
-    const radialDirectionY = py / rPlanar;
+    const azimuth = Math.atan2(py, px);
+    const armSeed = 1 + 0.03 * Math.cos(2 * azimuth + spiralPhase);
+    const spinScatter = randomRange(0.9, 1.08);
+    const support = isBulge ? 0.72 : 1.12;
+    const spinVelocity =
+      vCirc * support * spinBase * Math.max(0.2, rotationStrength) * Math.pow(radialFraction, 0.08) * spinScatter * armSeed;
+    const dispersion = isBulge ? 0.055 : 0.022;
+    const collapseBias = isBulge ? randomRange(-0.003, 0.003) : randomRange(-0.004, 0.003);
 
     bodies.push({
       id: i + 1,
@@ -96,15 +126,13 @@ export function generateBodies(
       x,
       y,
       z,
-      vx:
-        tangentialX * spinVelocity -
-        radialDirectionX * collapseBias +
-        randomRange(-dispersion, dispersion),
-      vy:
-        tangentialY * spinVelocity -
-        radialDirectionY * collapseBias +
-        randomRange(-dispersion, dispersion),
-      vz: -z * 0.0004 + randomRange(-0.04, 0.04),
+      vx: tangential.x * spinVelocity - radialDirection.x * collapseBias + randomRange(-dispersion, dispersion),
+      vy: tangential.y * spinVelocity - radialDirection.y * collapseBias + randomRange(-dispersion, dispersion),
+      vz:
+        tangential.z * spinVelocity -
+        radialDirection.z * collapseBias -
+        z * 0.00095 +
+        randomRange(isBulge ? -0.028 : -0.015, isBulge ? 0.028 : 0.015),
       radius: isBulge
         ? randomRange(minRadius * 0.72, maxRadius * 0.82)
         : randomRange(minRadius, maxRadius),

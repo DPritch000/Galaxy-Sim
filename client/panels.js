@@ -8,6 +8,9 @@ function formatValue(id, value) {
   if (id === "armTightness") {
     return Number(value).toFixed(1);
   }
+  if (id === "rotationStrength") {
+    return Number(value).toFixed(2);
+  }
   if (id === "timeScale") {
     return `${Number(value).toFixed(2)}x`;
   }
@@ -71,6 +74,11 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
         <span>Spiral Arm Tightness</span>
         <input id="armTightness" type="range" min="1.2" max="6.5" step="0.1" value="${settings.armTightness}" />
         <strong data-value-for="armTightness">${formatValue("armTightness", settings.armTightness)}</strong>
+      </label>
+      <label class="field-row">
+        <span>Rotation Strength</span>
+        <input id="rotationStrength" type="range" min="0.4" max="1.8" step="0.02" value="${settings.rotationStrength}" />
+        <strong data-value-for="rotationStrength">${formatValue("rotationStrength", settings.rotationStrength)}</strong>
       </label>
       <label class="field-row">
         <span>Time Scale</span>

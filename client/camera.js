@@ -39,6 +39,22 @@ export class Camera {
     this.focusZ = z;
   }
 
+  followFocus(x, y, z = 0, smoothing = 0.12, deadzone = 0.5) {
+    const targetDx = x - this.focusX;
+    const targetDy = y - this.focusY;
+    const targetDz = z - this.focusZ;
+    const dist = Math.hypot(targetDx, targetDy, targetDz);
+
+    if (dist <= deadzone) {
+      return;
+    }
+
+    const blend = Math.max(0.01, Math.min(1, smoothing));
+    this.focusX += targetDx * blend;
+    this.focusY += targetDy * blend;
+    this.focusZ += targetDz * blend;
+  }
+
   project(body) {
     const cx = this.width * 0.5;
     const cy = this.height * 0.5;
