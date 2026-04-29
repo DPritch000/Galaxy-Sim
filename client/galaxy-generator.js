@@ -251,6 +251,7 @@ export function generatePlanets(
       vx: -Math.sin(angle) * vOrbital + randomNormal() * 0.02,
       vy: Math.cos(angle) * vOrbital + randomNormal() * 0.02,
       vz: randomNormal() * 0.01,
+      orbitRadius,
       radius,
       mass: planetMass,
       color: `hsl(${Math.floor(hueBase)} ${saturation}% ${lightness}%)`

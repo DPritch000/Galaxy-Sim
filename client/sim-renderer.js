@@ -34,17 +34,45 @@ function drawBlackHole(ctx, camera, width, height, blackHoleStrength) {
   ctx.stroke();
 }
 
-export function renderFrame(ctx, bodies, width, height, camera, blackHoleStrength = 0) {
+function drawStar(ctx, camera, star) {
+  const p = camera.project(star);
+  if (!p) return;
+  const r = Math.max(6, star.radius * p.scale * 3);
+
+  const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.5);
+  glow.addColorStop(0, "rgba(255, 255, 210, 0.9)");
+  glow.addColorStop(0.3, "rgba(255, 240, 100, 0.5)");
+  glow.addColorStop(1, "rgba(255, 200, 50, 0)");
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r * 2.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#fff8e0";
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+export function renderFrame(ctx, bodies, width, height, camera, blackHoleStrength = 0, planetMode = false) {
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#05070f";
   ctx.fillRect(0, 0, width, height);
 
   drawBlackHole(ctx, camera, width, height, blackHoleStrength);
 
+  if (planetMode) {
+    if (bodies.length > 0 && bodies[0].isStar) {
+      drawStar(ctx, camera, bodies[0]);
+    }
+  }
+
   const count = bodies.length;
+  const startIdx = planetMode ? 1 : 0;
   const stride = count > 90000 ? 4 : count > 50000 ? 3 : count > 20000 ? 2 : 1;
 
-  for (let i = 0; i < count; i += stride) {
+  for (let i = startIdx; i < count; i += stride) {
     const body = bodies[i];
     const p = camera.project(body);
     if (!p) {

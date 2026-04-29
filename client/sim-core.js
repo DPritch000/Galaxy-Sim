@@ -118,28 +118,30 @@ function stepSimulation() {
   const dt = timeScale;
   const bodies = state.bodies;
 
-  // Planet simulation mode: simple N-body gravity from the star
+  // Planet simulation mode: full N-body via Barnes-Hut so planets affect each other
   if (state.planetMode) {
-    const star = bodies[0]; // First body is the star
-    const softening = 2; // Softening length to prevent singularities
+    // epsilonSq = 36 softening is applied inside computeAccelerationBarnesHut
+    const tree = buildBarnesHutTree(bodies, SIM_CONFIG.width, SIM_CONFIG.height);
 
-    for (let i = 1; i < bodies.length; i++) {
-      const planet = bodies[i];
-      const dx = star.x - planet.x;
-      const dy = star.y - planet.y;
-      const dz = star.z - planet.z;
-      const distSq = dx * dx + dy * dy + dz * dz + softening * softening;
-      const dist = Math.sqrt(distSq);
-      const invDist3 = 1 / (distSq * dist);
-      const force = gravityStrength * star.mass * invDist3;
+    for (const body of bodies) {
+      // Star is anchored — skip integrating its velocity so it stays centred
+      if (body.isStar) continue;
 
-      planet.vx += dx * force * dt;
-      planet.vy += dy * force * dt;
-      planet.vz += dz * force * dt;
+      const { ax, ay, az } = computeAccelerationBarnesHut(
+        tree,
+        body,
+        barnesHutTheta,
+        gravityStrength
+      );
+
+      body.vx += ax * dt;
+      body.vy += ay * dt;
+      body.vz += az * dt;
     }
 
-    // Update positions
+    // Update positions (planets only; star stays fixed)
     for (const body of bodies) {
+      if (body.isStar) continue;
       body.x += body.vx * dt;
       body.y += body.vy * dt;
       body.z += body.vz * dt;
@@ -253,7 +255,8 @@ function tick() {
     SIM_CONFIG.width,
     SIM_CONFIG.height,
     camera,
-    state.settings.blackHoleStrength
+    state.planetMode ? 0 : state.settings.blackHoleStrength,
+    state.planetMode
   );
   if (graphPanel) {
     updateGraph(graphPanel, getSystemEnergy(state.bodies));
