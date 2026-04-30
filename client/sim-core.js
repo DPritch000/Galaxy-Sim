@@ -2,21 +2,11 @@ import { SIM_CONFIG } from "./sim-config.js";
 import { Camera } from "./camera.js";
 import { bindControls } from "./sim-controls.js";
 import { renderFrame } from "./sim-renderer.js";
-import { circularVelocitySquared, generateBodies, generateCloudBodies, generatePlanets } from "./galaxy-generator.js";
+import { circularVelocitySquared, generateCloudBodies, generatePlanets } from "./galaxy-generator.js";
 import { getSystemEnergy } from "./analysis-tools.js";
 import { setPanelValues, setupPanels } from "./panels.js";
 import { updateGraph } from "./graph.js";
 import { buildBarnesHutTree, computeAccelerationBarnesHut } from "./barnes-hut.js";
-
-const STABLE_GALAXY_SETTINGS = {
-  particleCount: 5000,
-  gravityStrength: 6,
-  blackHoleStrength: 60,
-  darkMatterStrength: 2300,
-  armTightness: 3.8,
-  timeScale: 0.12,
-  barnesHutTheta: 0.85
-};
 
 const canvas = document.getElementById("sim-canvas");
 const graphPanel = document.getElementById("graph-panel");
@@ -29,7 +19,7 @@ const camera = new Camera(SIM_CONFIG.width, SIM_CONFIG.height);
 
 const state = {
   paused: false,
-  collapseMode: false,
+  collapseMode: true,
   collapseStep: 0,
   planetMode: false,
   settings: {
@@ -37,29 +27,18 @@ const state = {
     starMass: 1.0,
     planetCount: 8
   },
-  bodies: generateBodies(
+  bodies: generateCloudBodies(
     SIM_CONFIG.defaults.particleCount,
     SIM_CONFIG.width,
     SIM_CONFIG.height,
     SIM_CONFIG.defaults.gravityStrength,
     SIM_CONFIG.defaults.blackHoleStrength,
-    SIM_CONFIG.defaults.darkMatterStrength,
-    SIM_CONFIG.defaults.armTightness
+    SIM_CONFIG.defaults.darkMatterStrength
   )
 };
 
 function regenerateBodies() {
-  state.collapseMode = false;
-  state.collapseStep = 0;
-  state.bodies = generateBodies(
-    state.settings.particleCount,
-    SIM_CONFIG.width,
-    SIM_CONFIG.height,
-    state.settings.gravityStrength,
-    state.settings.blackHoleStrength,
-    state.settings.darkMatterStrength,
-    state.settings.armTightness
-  );
+  startCloudCollapse();
 }
 
 function startCloudCollapse() {
@@ -94,23 +73,13 @@ function updateSetting(name, value) {
     name === "particleCount" ||
     name === "blackHoleStrength" ||
     name === "darkMatterStrength" ||
-    name === "gravityStrength" ||
-    name === "armTightness"
+    name === "gravityStrength"
   ) {
     regenerateBodies();
   }
 }
 
-function applyStableGalaxySettings() {
-  state.settings = {
-    ...state.settings,
-    ...STABLE_GALAXY_SETTINGS
-  };
-  setPanelValues(state.settings);
-  regenerateBodies();
-}
-
-setupPanels(state.settings, updateSetting, regenerateBodies, applyStableGalaxySettings, startCloudCollapse, startPlanetSimulation);
+setupPanels(state.settings, updateSetting, startCloudCollapse, startPlanetSimulation);
 bindControls(state, camera, canvas);
 
 function stepSimulation() {
@@ -154,14 +123,13 @@ function stepSimulation() {
 
   if (state.collapseMode) {
     state.collapseStep += 1;
+    // Exit collapse mode after a fixed number of frames (not sim-time).
+    // 1600 frames at 60fps ≈ 27 seconds of wall time — enough for the disk to
+    // flatten and stars to spread across orbital radii at any timescale.
+    if (state.collapseStep >= 1600) {
+      state.collapseMode = false;
+    }
   }
-  // collapseProgress ramps from 0.08→1 over the first 1200 collapse steps.
-  // Starting at 0.08 (never fully zero) ensures a minimal orbital support floor
-  // is always active, preventing stars from losing all angular momentum and
-  // forming stagnant clumps. Outside collapse mode it stays at 1.
-  const collapseProgress = state.collapseMode
-    ? Math.min(1, 0.08 + (state.collapseStep / 1200) * 0.92)
-    : 1;
   const { coreRadius, haloCoreRadius } = SIM_CONFIG.structure;
   const cx = SIM_CONFIG.width * 0.5;
   const cy = SIM_CONFIG.height * 0.5;
@@ -171,7 +139,10 @@ function stepSimulation() {
   const blackHoleStrength = state.settings.blackHoleStrength;
   const coreRadiusSq = coreRadius * coreRadius;
   const haloCoreRadiusSq = haloCoreRadius * haloCoreRadius;
-  const maxSpeed = 4.5;
+  // maxSpeed scales with dt so the cap fires at the same rate regardless of
+  // timescale — without this, the cap drains energy 8× faster at dt=1 vs dt=0.12
+  // and everything collapses to the centre.
+  const maxSpeed = 4.5 * Math.max(1, dt / 0.12);
 
   for (const body of bodies) {
     const { ax, ay, az } = computeAccelerationBarnesHut(
@@ -217,17 +188,31 @@ function stepSimulation() {
           state.settings.darkMatterStrength,
           state.settings.particleCount
         )
-      ) * 0.96;
+      );
       const tangentialDelta = targetTangential - tangentialVelocity;
 
-      // Ramp up orbital support as the disk collapses — zero at first so the
-      // cloud evolves under pure gravity, then gradually guides it onto stable orbits.
-      body.vx += tangentX * tangentialDelta * supportRelaxation * collapseProgress;
-      body.vy += tangentY * tangentialDelta * supportRelaxation * collapseProgress;
+      // During cloud collapse, skip the orbital-support and radial-damping passes.
+      // Applying them circularises every orbit at its current radius, causing all
+      // stars to pile up at their momentary pericenter and form a ring.
+      // Only apply support after the cloud has fully flattened (collapseProgress = 1).
+      if (!state.collapseMode) {
+        // Scale corrections by dt so they apply at the same rate per unit
+        // simulation-time regardless of the timescale slider value.
+        const dtScale = dt / 0.12;
+        body.vx += tangentX * tangentialDelta * supportRelaxation * dtScale;
+        body.vy += tangentY * tangentialDelta * supportRelaxation * dtScale;
 
-      const radialVelocity = body.vx * (radialX / radius) + body.vy * (radialY / radius);
-      body.vx -= (radialX / radius) * radialVelocity * radialDamping * collapseProgress;
-      body.vy -= (radialY / radius) * radialVelocity * radialDamping * collapseProgress;
+        // Only damp radial velocity when the body is moving radially much faster
+        // than the local circular speed — removes genuine overshoot without
+        // damping legitimate gravitational infall.
+        const radialVelocity = body.vx * (radialX / radius) + body.vy * (radialY / radius);
+        const excessRadial = Math.abs(radialVelocity) - targetTangential * 0.5;
+        if (excessRadial > 0) {
+          const dampFrac = Math.min(1, excessRadial / Math.max(0.01, Math.abs(radialVelocity)));
+          body.vx -= (radialX / radius) * radialVelocity * dampFrac * radialDamping * dtScale;
+          body.vy -= (radialY / radius) * radialVelocity * dampFrac * radialDamping * dtScale;
+        }
+      }
     }
 
     const speed = Math.hypot(body.vx, body.vy, body.vz);

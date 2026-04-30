@@ -27,7 +27,7 @@ function syncControlDisplay(input) {
   }
 }
 
-export function setupPanels(settings, onSettingsChange, onRegenerate, onApplyStableGalaxy, onApplyCloudCollapse, onStartPlanets) {
+export function setupPanels(settings, onSettingsChange, onApplyCloudCollapse, onStartPlanets) {
   const left = document.getElementById("left-panel");
   const right = document.getElementById("right-panel");
 
@@ -40,8 +40,7 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
       <p class="panel-copy">The black hole slider is intentionally softened so it shapes the core instead of swallowing the whole disk.</p>
       <p class="panel-copy">The dark matter halo supports the outer disk so stars do not all fall inward.</p>
       <p class="panel-copy">Star-to-star gravity is softened internally so the disk behaves more like a collisionless galaxy than a sticky star cluster.</p>
-      <p class="panel-copy">The disk now starts with seeded spiral arms and a rotation curve matched to the current mass model.</p>
-      <p class="panel-copy"><strong>Cloud Collapse</strong> starts from a random sphere with sub-virial rotation. Z-velocity damping flattens it to a disk; orbital support ramps up over ~2000 steps so the galaxy structure emerges from gravity rather than being pre-seeded.</p>
+      <p class="panel-copy"><strong>Cloud Formation</strong> starts from a random rotating sphere. Z-velocity damping flattens it to a disk; orbital support ramps up over ~1600 frames so the galaxy structure emerges from gravity.</p>
       <p class="panel-copy">100,000 particles is experimental and can run slowly on CPU.</p>
     `;
   }
@@ -53,7 +52,6 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
   right.innerHTML = `
     <div class="panel-tabs" role="tablist" aria-label="Right panel tabs">
       <button class="panel-tab is-active" id="tab-controls" type="button" role="tab" aria-controls="tab-pane-controls" aria-selected="true" data-tab-target="controls">Controls</button>
-      <button class="panel-tab" id="tab-seeded" type="button" role="tab" aria-controls="tab-pane-seeded" aria-selected="false" data-tab-target="seeded">Seeded Spiral</button>
       <button class="panel-tab" id="tab-formation" type="button" role="tab" aria-controls="tab-pane-formation" aria-selected="false" data-tab-target="formation">Galaxy Formation</button>
       <button class="panel-tab" id="tab-planets" type="button" role="tab" aria-controls="tab-pane-planets" aria-selected="false" data-tab-target="planets">Planets</button>
     </div>
@@ -82,11 +80,6 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
           <strong data-value-for="darkMatterStrength">${Math.round(settings.darkMatterStrength)}</strong>
         </label>
         <label class="field-row">
-          <span>Spiral Arm Tightness</span>
-          <input id="armTightness" type="range" min="1.2" max="6.5" step="0.1" value="${settings.armTightness}" />
-          <strong data-value-for="armTightness">${formatValue("armTightness", settings.armTightness)}</strong>
-        </label>
-        <label class="field-row">
           <span>Time Scale</span>
           <input id="timeScale" type="range" min="0.25" max="2" step="0.05" value="${settings.timeScale}" />
           <strong data-value-for="timeScale">${formatValue("timeScale", settings.timeScale)}</strong>
@@ -99,19 +92,12 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
       </details>
     </section>
 
-    <section class="tab-pane" id="tab-pane-seeded" role="tabpanel" aria-labelledby="tab-seeded" data-tab-pane="seeded">
-      <h4 class="panel-title">Seeded Spiral Galaxy</h4>
-      <p class="panel-copy">A pre-formed galaxy with spiral arm structure and stable circular orbits.</p>
-      <p class="panel-copy">Adjust parameters on the <strong>Controls</strong> tab and click below to regenerate.</p>
-      <button id="seeded-start" class="panel-button" type="button">Generate Seeded Galaxy</button>
-    </section>
-
     <section class="tab-pane" id="tab-pane-formation" role="tabpanel" aria-labelledby="tab-formation" data-tab-pane="formation">
-      <h4 class="panel-title">Galaxy Formation From Rotating Bodies</h4>
-      <p class="panel-copy">Start from a random rotating cloud and let gravity collapse the system into a disk around the central black hole.</p>
-      <p class="panel-copy">Tip: Lower <strong>Time Scale</strong> for a smoother educational view of arm emergence.</p>
+      <h4 class="panel-title">Galaxy Formation From Rotating Cloud</h4>
+      <p class="panel-copy">Stars begin as a random rotating sphere and collapse under gravity into a disk. Z-damping flattens the cloud; orbital support gradually stabilises circular orbits.</p>
+      <p class="panel-copy">Tip: Lower <strong>Time Scale</strong> for a smoother view of arm emergence.</p>
       <button id="formation-start" class="panel-button" type="button">Start Formation Run</button>
-      <button id="formation-reset" class="panel-button" type="button">Return To Seeded Spiral</button>
+      <button id="formation-reset" class="panel-button" type="button">Restart Formation</button>
     </section>
 
     <section class="tab-pane" id="tab-pane-planets" role="tabpanel" aria-labelledby="tab-planets" data-tab-pane="planets">
@@ -134,7 +120,6 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
   const sliders = Array.from(right.querySelectorAll("input[type='range']"));
   const tabButtons = Array.from(right.querySelectorAll("[data-tab-target]"));
   const tabPanes = Array.from(right.querySelectorAll("[data-tab-pane]"));
-  const seededButton = right.querySelector("#seeded-start");
   const formationStartButton = right.querySelector("#formation-start");
   const formationResetButton = right.querySelector("#formation-reset");
   const planetsButton = right.querySelector("#planets-start");
@@ -164,13 +149,6 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
     });
   }
 
-  if (seededButton) {
-    seededButton.addEventListener("click", () => {
-      onRegenerate();
-      activateTab("seeded");
-    });
-  }
-
   if (formationStartButton) {
     formationStartButton.addEventListener("click", () => {
       onApplyCloudCollapse();
@@ -180,8 +158,8 @@ export function setupPanels(settings, onSettingsChange, onRegenerate, onApplySta
 
   if (formationResetButton) {
     formationResetButton.addEventListener("click", () => {
-      onRegenerate();
-      activateTab("seeded");
+      onApplyCloudCollapse();
+      activateTab("formation");
     });
   }
 

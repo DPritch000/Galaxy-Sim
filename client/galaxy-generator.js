@@ -25,12 +25,18 @@ export function circularVelocitySquared(
   const r = Math.max(1, radius);
   const { coreRadius, haloCoreRadius } = SIM_CONFIG.structure;
   const { stellar, halo } = SIM_CONFIG.forceScale;
-  const diskScale = galaxyRadius * 0.32;
+  // 0.18 matches the sampleExponential scale used in generateBodies
+  const diskScale = galaxyRadius * 0.18;
 
   const vCoreSq = blackHoleStrength * ((r * r) / Math.pow(r * r + coreRadius * coreRadius, 1.5));
   const vHaloSq = darkMatterStrength * halo * ((r * r) / (r * r + haloCoreRadius * haloCoreRadius));
-  const diskAmplitude = gravityStrength * count * stellar;
-  const vDiskSq = diskAmplitude * (1 - Math.exp(-r / Math.max(1, diskScale)));
+  // Disk: v_c² = G·M_enc(r)/r for 1/r² gravity.
+  // M_enc ≈ N·m̄·[1−(1+r/h)·e^(−r/h)] for an exponential disk with scale h.
+  // h = 0.18·R matches the sampleExponential scale used in generateBodies.
+  // m̄ = 1.5 is the average particle mass (uniform on [0.6, 2.4]).
+  const h = Math.max(1, diskScale);
+  const enclosed = 1 - (1 + r / h) * Math.exp(-r / h);
+  const vDiskSq = gravityStrength * stellar * count * 1.5 * Math.max(0, enclosed) / r;
 
   return Math.max(0, vCoreSq + vHaloSq + vDiskSq);
 }
@@ -51,10 +57,10 @@ export function generateBodies(
   const cx = width * 0.5;
   const cy = height * 0.5;
   const galaxyRadius = Math.min(width, height) * 0.45;
-  const bulgeFraction = 0.18;
+  const bulgeFraction = 0.12;
   const bulgeInnerRadius = 18;
-  const armCount = 2;
-  const armSpread = 0.22;
+  const armCount = 4;
+  const armSpread = 0.05;
 
   for (let i = 0; i < count; i += 1) {
     const temperature = randomRange(0, 1);
@@ -71,7 +77,7 @@ export function generateBodies(
       : spiralAngle + randomNormal() * armSpread;
 
     const z = isBulge ? randomNormal() * 18 : randomNormal() * 10;
-    const radialJitter = isBulge ? 2.2 : 1.6;
+    const radialJitter = isBulge ? 2.2 : 0.6;
     const x = cx + Math.cos(angle) * radius + randomNormal() * radialJitter;
     const y = cy + Math.sin(angle) * radius + randomNormal() * radialJitter;
 
@@ -83,8 +89,8 @@ export function generateBodies(
     const tangentialY = Math.cos(angle);
     const radialDirectionX = Math.cos(angle);
     const radialDirectionY = Math.sin(angle);
-    const dispersion = isBulge ? 0.075 : 0.018;
-    const radialDrift = isBulge ? randomRange(-0.028, 0.028) : randomRange(-0.012, 0.012);
+    const dispersion = isBulge ? 0.075 : 0.005;
+    const radialDrift = isBulge ? randomRange(-0.028, 0.028) : randomRange(-0.004, 0.004);
 
     bodies.push({
       id: i + 1,
@@ -127,54 +133,60 @@ export function generateCloudBodies(
   const densityScale = Math.min(1, 220 / Math.max(count, 1));
   const minRadius = 0.12 + 0.08 * densityScale;
   const maxRadius = 0.28 + 0.16 * densityScale;
-  const armCount = 2;
-  const armTightness = 1.8; // Looser than seeded spiral (3.6) so arms evolve naturally
+
+  // Proto-arm seeding: 80% of stars are placed on 4 logarithmic spiral loci
+  // with a tight gaussian spread.  The density contrast gives differential
+  // rotation something to wind into visible arms once the disk flattens.
+  const armCount   = 4;
+  const armTightness = 1.6;   // loose so arms open up naturally during collapse
+  const armSigma   = 0.18;    // angular spread around each arm (radians)
+  const armFrac    = 0.80;    // fraction of stars placed on arms
 
   for (let i = 0; i < count; i++) {
-    // Rejection-sample a position inside an oblate sphere (slightly flattened along z)
-    let px, py, pz;
+    // Rejection-sample radius and z inside an oblate sphere
+    let planarR, pz, baseAngle;
     do {
-      px = (Math.random() * 2 - 1) * cloudRadius;
-      py = (Math.random() * 2 - 1) * cloudRadius;
-      pz = (Math.random() * 2 - 1) * cloudRadius * 0.65;
+      planarR = Math.random() * cloudRadius;
+      pz      = (Math.random() * 2 - 1) * cloudRadius * 0.65;
     } while (
-      (px * px + py * py) / (cloudRadius * cloudRadius) +
-        (pz * pz) / (cloudRadius * cloudRadius * 0.65 * 0.65) >
-      1
+      (planarR * planarR) / (cloudRadius * cloudRadius) +
+      (pz * pz) / (cloudRadius * cloudRadius * 0.65 * 0.65) > 1
     );
 
-    const planarR = Math.max(5, Math.hypot(px, py));
+    if (Math.random() < armFrac) {
+      // Place star near a spiral arm locus at this radius
+      const armIndex   = Math.floor(Math.random() * armCount);
+      const armBase    = (armIndex / armCount) * Math.PI * 2;
+      const spiralAngle = armBase + (planarR / cloudRadius) * armTightness * Math.PI * 2;
+      baseAngle = spiralAngle + randomNormal() * armSigma;
+    } else {
+      // Remaining stars fill the inter-arm regions uniformly
+      baseAngle = Math.random() * Math.PI * 2;
+    }
+
+    const px = Math.cos(baseAngle) * planarR;
+    const py = Math.sin(baseAngle) * planarR;
     const angle = Math.atan2(py, px);
 
-    // Seed subtle spiral structure based on radius — gives N-body interactions
-    // something to grow into spiral arms during the collapse.
-    const armIndex = Math.floor(Math.random() * armCount);
-    const armBaseAngle = (armIndex / armCount) * Math.PI * 2;
-    const spiralAngle = armBaseAngle + (planarR / cloudRadius) * armTightness * Math.PI * 2;
-    const spiralDeviation = randomNormal() * 0.12; // Loose scatter around spiral
+    // Local circular speed at this radius.
+    const vc = Math.sqrt(
+      circularVelocitySquared(
+        Math.max(5, planarR),
+        galaxyRadius,
+        gravityStrength,
+        blackHoleStrength,
+        darkMatterStrength,
+        count
+      )
+    );
 
-    // Sub-virial rotation (≈58% of circular speed) — enough angular momentum
-    // that stars don't fall straight to the center, but still well below virial
-    // equilibrium so the cloud collapses and flattens into a disk.
-    const vCirc =
-      Math.sqrt(
-        circularVelocitySquared(
-          planarR,
-          galaxyRadius,
-          gravityStrength,
-          blackHoleStrength,
-          darkMatterStrength,
-          count
-        )
-      ) * 0.58;
+    // Tangential velocity (40–90% of v_c) plus a SYMMETRIC radial component
+    // (±35% of v_c).  The mixed orbital phases break the apocenter-clustering
+    // that would otherwise form a ring instead of a filled disk.
+    const tangentialFrac = 0.40 + Math.random() * 0.50;
+    const radialFrac     = (Math.random() * 2 - 1) * 0.35;
 
     const temperature = Math.random();
-
-    // Apply small spiral-aligned velocity perturbation to seed structure growth
-    // during collapse. This gives density fluctuations that can grow into arms.
-    const spiralVelScale = 0.08;
-    const spiralVx = -Math.sin(spiralAngle) * spiralVelScale;
-    const spiralVy = Math.cos(spiralAngle) * spiralVelScale;
 
     bodies.push({
       id: i + 1,
@@ -182,9 +194,9 @@ export function generateCloudBodies(
       x: cx + px,
       y: cy + py,
       z: pz,
-      vx: -Math.sin(angle) * vCirc + spiralVx + randomNormal() * 0.07,
-      vy: Math.cos(angle) * vCirc + spiralVy + randomNormal() * 0.07,
-      vz: randomNormal() * 0.05,
+      vx: -Math.sin(angle) * vc * tangentialFrac + Math.cos(angle) * vc * radialFrac + randomNormal() * 0.04,
+      vy:  Math.cos(angle) * vc * tangentialFrac + Math.sin(angle) * vc * radialFrac + randomNormal() * 0.04,
+      vz: randomNormal() * 0.04,
       radius: randomRange(minRadius, maxRadius),
       mass: randomRange(0.6, 2.4),
       color: `hsl(${Math.floor(temperature < 0.55 ? randomRange(200, 230) : randomRange(35, 60))} 90% ${Math.floor(randomRange(68, 88))}%)`

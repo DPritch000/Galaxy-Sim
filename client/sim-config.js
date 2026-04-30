@@ -6,7 +6,7 @@ export const SIM_CONFIG = {
     halo: 0.0022,
     coreVertical: 0.35,
     supportRelaxation: 0.055,
-    radialDamping: 0.028
+    radialDamping: 0.008
   },
   structure: {
     coreRadius: 95,
@@ -17,7 +17,7 @@ export const SIM_CONFIG = {
     gravityStrength: 6,
     blackHoleStrength: 60,
     darkMatterStrength: 2200,
-    armTightness: 3.6,
+    armTightness: 2.8,
     timeScale: 0.12,
     barnesHutTheta: 0.85
   }
