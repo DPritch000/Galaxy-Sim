@@ -144,9 +144,7 @@ export function computeAccelerationBarnesHut(root, body, theta, gravityStrength)
   let ay = 0;
   let az = 0;
   const stack = [root];
-  // Softening length ε = 6px prevents force divergence when stars get close.
-  // At galaxy scale (hundreds of pixels) this is imperceptible on normal orbits
-  // but stops runaway clumps during cloud collapse.
+
   const epsilonSq = 36;
 
   while (stack.length > 0) {

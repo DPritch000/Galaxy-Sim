@@ -134,16 +134,13 @@ export function generateCloudBodies(
   const minRadius = 0.12 + 0.08 * densityScale;
   const maxRadius = 0.28 + 0.16 * densityScale;
 
-  // Proto-arm seeding: 80% of stars are placed on 4 logarithmic spiral loci
-  // with a tight gaussian spread.  The density contrast gives differential
-  // rotation something to wind into visible arms once the disk flattens.
+  
   const armCount   = 4;
-  const armTightness = 1.6;   // loose so arms open up naturally during collapse
-  const armSigma   = 0.18;    // angular spread around each arm (radians)
-  const armFrac    = 0.80;    // fraction of stars placed on arms
+  const armTightness = 1.6;   
+  const armSigma   = 0.18;  
+  const armFrac    = 0.80;   
 
   for (let i = 0; i < count; i++) {
-    // Rejection-sample radius and z inside an oblate sphere
     let planarR, pz, baseAngle;
     do {
       planarR = Math.random() * cloudRadius;
@@ -154,13 +151,11 @@ export function generateCloudBodies(
     );
 
     if (Math.random() < armFrac) {
-      // Place star near a spiral arm locus at this radius
       const armIndex   = Math.floor(Math.random() * armCount);
       const armBase    = (armIndex / armCount) * Math.PI * 2;
       const spiralAngle = armBase + (planarR / cloudRadius) * armTightness * Math.PI * 2;
       baseAngle = spiralAngle + randomNormal() * armSigma;
     } else {
-      // Remaining stars fill the inter-arm regions uniformly
       baseAngle = Math.random() * Math.PI * 2;
     }
 
@@ -168,7 +163,6 @@ export function generateCloudBodies(
     const py = Math.sin(baseAngle) * planarR;
     const angle = Math.atan2(py, px);
 
-    // Local circular speed at this radius.
     const vc = Math.sqrt(
       circularVelocitySquared(
         Math.max(5, planarR),
@@ -180,9 +174,6 @@ export function generateCloudBodies(
       )
     );
 
-    // Tangential velocity (40–90% of v_c) plus a SYMMETRIC radial component
-    // (±35% of v_c).  The mixed orbital phases break the apocenter-clustering
-    // that would otherwise form a ring instead of a filled disk.
     const tangentialFrac = 0.40 + Math.random() * 0.50;
     const radialFrac     = (Math.random() * 2 - 1) * 0.35;
 
@@ -216,7 +207,6 @@ export function generatePlanets(
   const cx = width * 0.5;
   const cy = height * 0.5;
 
-  // Central star (immobile for simplicity, acts like the black hole)
   bodies.push({
     id: 0,
     isStar: true,
@@ -227,29 +217,23 @@ export function generatePlanets(
     vy: 0,
     vz: 0,
     radius: 8,
-    mass: starMass * 100, // Scale up for gravitational effect
-    color: `hsl(50 100% 55%)` // Sun-like yellow
+    mass: starMass * 100, 
+    color: `hsl(50 100% 55%)`
   });
 
-  // Generate planets around the star
   const maxPlanets = Math.min(Math.max(planetCount, 1), 100);
   for (let i = 0; i < maxPlanets; i++) {
     // Orbital radius from 60 to 200 pixels
     const orbitRadius = randomRange(60, 200);
     const angle = Math.random() * Math.PI * 2;
 
-    // Orbital velocity for circular orbit: v = sqrt(G * M_star / r)
-    // Scale: G ≈ 1, M_star is the starMass parameter
     const vOrbital = Math.sqrt((gravityStrength * starMass * 100) / Math.max(1, orbitRadius));
 
-    // Randomize planet mass: 0.3 to 10 Earth masses (simplified scale)
     const planetMass = randomRange(0.3, 10);
 
-    // Planet size based on mass: larger mass = larger visual size
     const baseRadius = 2 + Math.pow(planetMass / 10, 0.5) * 3;
     const radius = randomRange(Math.max(1, baseRadius * 0.8), baseRadius * 1.2);
 
-    // Random color for variety (planets)
     const hueBase = Math.random() * 360;
     const saturation = randomRange(60, 90);
     const lightness = randomRange(45, 70);
@@ -259,7 +243,7 @@ export function generatePlanets(
       isStar: false,
       x: cx + Math.cos(angle) * orbitRadius,
       y: cy + Math.sin(angle) * orbitRadius,
-      z: randomNormal() * 8, // Slight z variation for depth
+      z: randomNormal() * 8,
       vx: -Math.sin(angle) * vOrbital + randomNormal() * 0.02,
       vy: Math.cos(angle) * vOrbital + randomNormal() * 0.02,
       vz: randomNormal() * 0.01,
