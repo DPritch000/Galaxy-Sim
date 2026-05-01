@@ -89,8 +89,8 @@ export function setupPanels(settings, onSettingsChange, onApplyCloudCollapse, on
 
     <section class="tab-pane" id="tab-pane-formation" role="tabpanel" aria-labelledby="tab-formation" data-tab-pane="formation">
       <h4 class="panel-title">Galaxy Formation From Rotating Cloud</h4>
-      <p class="panel-copy">Stars begin as a random rotating sphere and collapse under gravity into a disk. Z-damping flattens the cloud; orbital support gradually stabilises circular orbits.</p>
-      <p class="panel-copy">Tip: Lower <strong>Time Scale</strong> for a smoother view of arm emergence.</p>
+      <p class="panel-copy">Stars begin as a random rotating sphere and collapse under gravity into a disk.</p>
+      <p class="panel-copy">Tip: Lower <strong>Time Scale</strong> and <strong>Theta</strong> for a smoother view of arm emergence.</p>
       <button id="formation-start" class="panel-button" type="button">Start Formation Run</button>
       <button id="formation-reset" class="panel-button" type="button">Restart Formation</button>
     </section>
