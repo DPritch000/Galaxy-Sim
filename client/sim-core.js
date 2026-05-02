@@ -191,20 +191,12 @@ function stepSimulation() {
       );
       const tangentialDelta = targetTangential - tangentialVelocity;
 
-      // During cloud collapse, skip the orbital-support and radial-damping passes.
-      // Applying them circularises every orbit at its current radius, causing all
-      // stars to pile up at their momentary pericenter and form a ring.
-      // Only apply support after the cloud has fully flattened (collapseProgress = 1).
       if (!state.collapseMode) {
-        // Scale corrections by dt so they apply at the same rate per unit
-        // simulation-time regardless of the timescale slider value.
+    
         const dtScale = dt / 0.12;
         body.vx += tangentX * tangentialDelta * supportRelaxation * dtScale;
         body.vy += tangentY * tangentialDelta * supportRelaxation * dtScale;
 
-        // Only damp radial velocity when the body is moving radially much faster
-        // than the local circular speed — removes genuine overshoot without
-        // damping legitimate gravitational infall.
         const radialVelocity = body.vx * (radialX / radius) + body.vy * (radialY / radius);
         const excessRadial = Math.abs(radialVelocity) - targetTangential * 0.5;
         if (excessRadial > 0) {

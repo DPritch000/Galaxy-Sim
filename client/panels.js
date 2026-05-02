@@ -37,11 +37,6 @@ export function setupPanels(settings, onSettingsChange, onApplyCloudCollapse, on
       <p class="panel-copy">Press space to pause or resume.</p>
       <p class="panel-copy">Use the sliders on the right to tune the system.</p>
       <p class="panel-copy">Drag left mouse to orbit. Drag right mouse to pan. Use wheel to zoom.</p>
-      <p class="panel-copy">The black hole slider is intentionally softened so it shapes the core instead of swallowing the whole disk.</p>
-      <p class="panel-copy">The dark matter halo supports the outer disk so stars do not all fall inward.</p>
-      <p class="panel-copy">Star-to-star gravity is softened internally so the disk behaves more like a collisionless galaxy than a sticky star cluster.</p>
-      <p class="panel-copy"><strong>Cloud Formation</strong> starts from a random rotating sphere. Z-velocity damping flattens it to a disk; orbital support ramps up over ~1600 frames so the galaxy structure emerges from gravity.</p>
-      <p class="panel-copy">100,000 particles is experimental and can run slowly on CPU.</p>
     `;
   }
 
@@ -94,8 +89,8 @@ export function setupPanels(settings, onSettingsChange, onApplyCloudCollapse, on
 
     <section class="tab-pane" id="tab-pane-formation" role="tabpanel" aria-labelledby="tab-formation" data-tab-pane="formation">
       <h4 class="panel-title">Galaxy Formation From Rotating Cloud</h4>
-      <p class="panel-copy">Stars begin as a random rotating sphere and collapse under gravity into a disk. Z-damping flattens the cloud; orbital support gradually stabilises circular orbits.</p>
-      <p class="panel-copy">Tip: Lower <strong>Time Scale</strong> for a smoother view of arm emergence.</p>
+      <p class="panel-copy">Stars begin as a random rotating sphere and collapse under gravity into a disk.</p>
+      <p class="panel-copy">Tip: Lower <strong>Time Scale</strong> and <strong>Theta</strong> for a smoother view of arm emergence.</p>
       <button id="formation-start" class="panel-button" type="button">Start Formation Run</button>
       <button id="formation-reset" class="panel-button" type="button">Restart Formation</button>
     </section>
