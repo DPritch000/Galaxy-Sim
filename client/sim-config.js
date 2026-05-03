@@ -16,7 +16,7 @@ export const SIM_CONFIG = {
     particleCount: 10000,
     gravityStrength: 6,
     blackHoleStrength: 60,
-    darkMatterStrength: 5000,
+    darkMatterStrength: 3000,
     armTightness: 2.8,
     timeScale: 1.00,
     barnesHutTheta: 0.85
