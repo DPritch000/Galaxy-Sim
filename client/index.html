@@ -4,18 +4,900 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Galaxy Simulator</title>
-    <link rel="stylesheet" href="./layout.css" />
-    <link rel="stylesheet" href="./ui.css" />
+    <meta name="description" content="Explore interactive galaxy and solar system simulations. Learn about galaxy formation, solar system origins, and the Barnes-Hut algorithm." />
+    <meta property="og:title" content="Galaxy Simulator" />
+    <meta property="og:description" content="Explore interactive galaxy and solar system simulations powered by real physics." />
+    <meta property="og:url" content="https://galaxysimulator.org/" />
+    <meta property="og:type" content="website" />
+    <link rel="canonical" href="https://galaxysimulator.org/" />
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2949673573653840" crossorigin="anonymous"></script>
+    <meta name="google-adsense-account" content="ca-pub-2949673573653840" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+    <style>
+      /* ── Reset & base ── */
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --bg-deep:   #03040a;
+        --bg-card:   rgba(8, 14, 36, 0.72);
+        --accent:    #4f8ef7;
+        --accent2:   #a259f7;
+        --glow:      #4f8ef755;
+        --glow2:     #a259f744;
+        --text:      #d8e4ff;
+        --muted:     #7a8ab0;
+        --border:    rgba(79, 142, 247, 0.22);
+        color-scheme: dark;
+      }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        background: var(--bg-deep);
+        color: var(--text);
+        font-family: "Inter", "Segoe UI", sans-serif;
+        font-weight: 300;
+        line-height: 1.7;
+        overflow-x: hidden;
+      }
+
+      /* ── Starfield canvas ── */
+      #starfield {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      /* ── Nebula blobs ── */
+      .nebula {
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(110px);
+        opacity: 0.18;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .nebula-1 { width: 600px; height: 600px; background: #1a3a9c; top: -150px; left: -100px; }
+      .nebula-2 { width: 500px; height: 500px; background: #6b1a9c; bottom: 10%; right: -80px; }
+      .nebula-3 { width: 400px; height: 400px; background: #1a6b9c; top: 45%; left: 30%; }
+
+      /* ── Layout wrapper ── */
+      .page {
+        position: relative;
+        z-index: 1;
+      }
+
+      /* ── Hero ── */
+      .hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 4rem 1.5rem 6rem;
+      }
+
+      .hero-eyebrow {
+        font-family: "Orbitron", sans-serif;
+        font-size: 0.72rem;
+        letter-spacing: 0.28em;
+        color: var(--accent);
+        text-transform: uppercase;
+        margin-bottom: 1.4rem;
+        opacity: 0.85;
+      }
+
+      .hero h1 {
+        font-family: "Orbitron", sans-serif;
+        font-size: clamp(2.2rem, 6vw, 5rem);
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: 0.04em;
+        background: linear-gradient(135deg, #c8d8ff 0%, var(--accent) 40%, var(--accent2) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1.5rem;
+        text-shadow: none;
+      }
+
+      .hero p {
+        max-width: 620px;
+        font-size: 1.08rem;
+        color: var(--muted);
+        margin-bottom: 2.8rem;
+      }
+
+      .hero-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        color: #fff;
+        padding: 0.8rem 2rem;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.95rem;
+        letter-spacing: 0.06em;
+        text-decoration: none;
+        box-shadow: 0 0 28px var(--glow);
+        transition: box-shadow 0.25s, transform 0.2s;
+        font-family: "Orbitron", sans-serif;
+      }
+      .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 44px var(--glow); }
+
+      .btn-outline {
+        color: var(--accent);
+        padding: 0.8rem 2rem;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.95rem;
+        letter-spacing: 0.04em;
+        text-decoration: none;
+        border: 1px solid var(--border);
+        transition: border-color 0.25s, background 0.25s;
+      }
+      .btn-outline:hover { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+
+      /* ── Scroll indicator ── */
+      .scroll-hint {
+        position: absolute;
+        bottom: 2.2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--muted);
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        animation: fadeUp 2s ease infinite;
+      }
+      .scroll-hint::after {
+        content: "";
+        width: 1px;
+        height: 36px;
+        background: linear-gradient(to bottom, var(--accent), transparent);
+      }
+      @keyframes fadeUp {
+        0%, 100% { opacity: 0.4; transform: translateX(-50%) translateY(0); }
+        50%       { opacity: 0.9; transform: translateX(-50%) translateY(-6px); }
+      }
+
+      /* ── Sections ── */
+      .sections { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 8rem; }
+
+      .section-block {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3.5rem;
+        align-items: center;
+        padding: 5rem 0;
+        border-top: 1px solid var(--border);
+      }
+      .section-block:nth-child(even) .section-text { order: 2; }
+      .section-block:nth-child(even) .section-visual { order: 1; }
+
+      .section-tag {
+        font-family: "Orbitron", sans-serif;
+        font-size: 0.68rem;
+        letter-spacing: 0.22em;
+        color: var(--accent2);
+        text-transform: uppercase;
+        margin-bottom: 0.9rem;
+        opacity: 0.82;
+      }
+
+      .section-text h2 {
+        font-family: "Orbitron", sans-serif;
+        font-size: clamp(1.4rem, 2.8vw, 2rem);
+        font-weight: 600;
+        line-height: 1.25;
+        letter-spacing: 0.03em;
+        margin-bottom: 1.2rem;
+        color: #e8f0ff;
+      }
+
+      .section-text p {
+        color: var(--muted);
+        font-size: 0.97rem;
+        margin-bottom: 1rem;
+      }
+
+      .section-text p:last-child { margin-bottom: 0; }
+
+      /* ── Visual cards ── */
+      .section-visual {
+        position: relative;
+      }
+
+      .vis-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2rem;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 0 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(79,142,247,0.04);
+        min-height: 260px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 1.2rem;
+        overflow: hidden;
+      }
+
+      /* Galaxy formation visual */
+      #milky-way { display: block; border-radius: 50%; }
+
+      /* Solar system orbital visual */
+      .orbit-system { position: relative; width: 180px; height: 180px; }
+      .orbit-ring {
+        position: absolute;
+        border-radius: 50%;
+        border: 1px solid rgba(79,142,247,0.3);
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .orbit-planet {
+        position: absolute;
+        border-radius: 50%;
+        top: 0; left: 50%;
+        transform-origin: 50% 50%;
+      }
+      .sun {
+        position: absolute;
+        width: 22px; height: 22px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #ffe87a, #ff9500);
+        box-shadow: 0 0 20px #ff950088;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      /* Barnes-Hut tree visual */
+      #bh-canvas { display: block; border-radius: 8px; }
+
+      /* Simulator preview card */
+      .sim-preview {
+        background: linear-gradient(135deg, rgba(8,14,36,0.9), rgba(20,10,40,0.9));
+        border: 1px solid rgba(162,89,247,0.3);
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        backdrop-filter: blur(12px);
+        min-height: 260px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 1.4rem;
+        box-shadow: 0 0 60px rgba(162,89,247,0.12);
+      }
+
+      .sim-icon {
+        font-size: 3.5rem;
+        line-height: 1;
+        filter: drop-shadow(0 0 18px rgba(162,89,247,0.8));
+        animation: pulseGlow 3s ease-in-out infinite;
+      }
+      @keyframes pulseGlow {
+        0%, 100% { filter: drop-shadow(0 0 12px rgba(162,89,247,0.6)); }
+        50%       { filter: drop-shadow(0 0 28px rgba(162,89,247,1)); }
+      }
+
+      .sim-preview-label {
+        font-family: "Orbitron", sans-serif;
+        font-size: 0.78rem;
+        letter-spacing: 0.2em;
+        color: var(--accent2);
+        text-transform: uppercase;
+        opacity: 0.8;
+      }
+
+      .feature-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: left;
+        width: 100%;
+        max-width: 240px;
+      }
+      .feature-list li {
+        font-size: 0.84rem;
+        color: var(--muted);
+        padding-left: 1.4rem;
+        position: relative;
+      }
+      .feature-list li::before {
+        content: "▸";
+        position: absolute;
+        left: 0;
+        color: var(--accent);
+      }
+
+      /* ── Stats bar ── */
+      .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+        max-width: 800px;
+        margin: 0 auto 6rem;
+        padding: 0 1.5rem;
+      }
+
+      .stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.4rem 1rem;
+        text-align: center;
+        backdrop-filter: blur(8px);
+      }
+
+      .stat-value {
+        font-family: "Orbitron", sans-serif;
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--accent);
+        text-shadow: 0 0 16px var(--glow);
+        display: block;
+        margin-bottom: 0.3rem;
+      }
+
+      .stat-label {
+        font-size: 0.78rem;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+      }
+
+      /* ── CTA banner ── */
+      .cta-banner {
+        text-align: center;
+        padding: 5rem 1.5rem;
+        border-top: 1px solid var(--border);
+        margin: 0 1.5rem;
+      }
+
+      .cta-banner h2 {
+        font-family: "Orbitron", sans-serif;
+        font-size: clamp(1.5rem, 3.5vw, 2.4rem);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, #c8d8ff, var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .cta-banner p {
+        color: var(--muted);
+        max-width: 500px;
+        margin: 0 auto 2.4rem;
+        font-size: 0.97rem;
+      }
+
+      /* ── Footer ── */
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 2rem 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 0.8rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      footer a { color: var(--muted); text-decoration: none; }
+      footer a:hover { color: var(--text); }
+
+      .footer-logo {
+        font-family: "Orbitron", sans-serif;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--accent);
+        letter-spacing: 0.1em;
+      }
+
+      /* ── Responsive ── */
+      @media (max-width: 768px) {
+        .section-block {
+          grid-template-columns: 1fr;
+          gap: 2rem;
+          padding: 3.5rem 0;
+        }
+        .section-block:nth-child(even) .section-text { order: 1; }
+        .section-block:nth-child(even) .section-visual { order: 2; }
+      }
+    </style>
   </head>
   <body>
-    <div class="app-shell">
-      <aside id="left-panel" class="panel"></aside>
-      <main>
-        <canvas id="sim-canvas" width="960" height="540"></canvas>
-        <section id="graph-panel" class="panel"></section>
-      </main>
-      <aside id="right-panel" class="panel"></aside>
-    </div>
-    <script type="module" src="./sim-core.js"></script>
+
+    <!-- Starfield -->
+    <canvas id="starfield" aria-hidden="true"></canvas>
+
+    <!-- Nebula blobs -->
+    <div class="nebula nebula-1" aria-hidden="true"></div>
+    <div class="nebula nebula-2" aria-hidden="true"></div>
+    <div class="nebula nebula-3" aria-hidden="true"></div>
+
+    <div class="page">
+
+      <!-- Hero -->
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="hero-eyebrow">Interactive Space Physics</p>
+        <h1 id="hero-title">Simulate the Universe</h1>
+        <p>Explore the forces that shaped galaxies, solar systems, and everything in between — powered by real gravitational physics and real-time simulation.</p>
+        <div class="hero-buttons">
+          <a href="./simulator.html" class="btn-primary">Launch Simulator</a>
+          <a href="#galaxy-formation" class="btn-outline">Learn More</a>
+        </div>
+        <div class="scroll-hint" aria-hidden="true">Scroll</div>
+      </section>
+
+      <!-- Stats -->
+      <div class="stats-bar" aria-label="Simulator statistics">
+        <div class="stat-card">
+          <span class="stat-value">100K</span>
+          <span class="stat-label">Particles</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">Real-time</span>
+          <span class="stat-label">Rendering</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value">6DOF</span>
+          <span class="stat-label">Camera</span>
+        </div>
+      </div>
+
+      <!-- Sections -->
+      <div class="sections">
+
+        <!-- Galaxy Formation -->
+        <section class="section-block" id="galaxy-formation" aria-labelledby="gf-title">
+          <div class="section-text">
+            <p class="section-tag">Cosmology</p>
+            <h2 id="gf-title">Galaxy Formation</h2>
+            <p>Galaxies are the fundamental building blocks of the large-scale universe. They form when gravity causes vast clouds of hydrogen and helium — left over from the Big Bang — to collapse and fragment into dense stellar nurseries over hundreds of millions of years.</p>
+            <p>Dark matter plays a critical role: its gravitational scaffolding draws in ordinary baryonic matter, seeding the first protogalactic clumps. As these collapse, conservation of angular momentum spins the infalling gas into a rotating disk, while feedback from supernovae and active galactic nuclei (AGN) regulate star formation.</p>
+            <p>At the center of most large galaxies lurks a supermassive black hole — millions to billions of solar masses — whose tidal influence and jet activity profoundly shapes galaxy morphology and star formation history over cosmic time.</p>
+          </div>
+          <div class="section-visual" aria-hidden="true">
+            <div class="vis-card">
+              <canvas id="milky-way" width="240" height="240"></canvas>
+              <p style="font-size:0.78rem;color:var(--muted);text-align:center;max-width:200px">
+                Spiral galaxy structure: bulge, disk, arms, and dark matter halo
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Solar System Formation -->
+        <section class="section-block" id="solar-system" aria-labelledby="ss-title">
+          <div class="section-text">
+            <p class="section-tag">Planetary Science</p>
+            <h2 id="ss-title">Solar System Formation</h2>
+            <p>Our solar system formed roughly 4.6 billion years ago from a cold, rotating molecular cloud — a solar nebula — triggered into collapse, possibly by a nearby supernova shockwave. Gravity drew most of the mass to the center, igniting a protostar that would become the Sun.</p>
+            <p>The remaining gas and dust flattened into a protoplanetary disk. Within this disk, tiny dust grains collided and stuck together, growing into centimeter-sized pebbles, then kilometer-scale planetesimals, and eventually rocky protoplanets. This accretion process is governed by gravitational focusing, relative velocities, and material strength.</p>
+            <p>The frost line — the boundary beyond which volatile ices condense — divided the disk into an inner terrestrial zone (rocky planets) and an outer giant planet zone. Jupiter's rapid growth disrupted the asteroid belt and may have deflected water-rich carbonaceous asteroids inward, seeding Earth with its oceans.</p>
+          </div>
+          <div class="section-visual" aria-hidden="true">
+            <div class="vis-card">
+              <div class="orbit-system" id="orbit-system">
+                <div class="sun"></div>
+                <!-- Rings and planets injected by JS -->
+              </div>
+              <p style="font-size:0.78rem;color:var(--muted);text-align:center;max-width:200px">
+                Protoplanetary disk: orbital resonances and accretion zones
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Barnes-Hut -->
+        <section class="section-block" id="barnes-hut" aria-labelledby="bh-title">
+          <div class="section-text">
+            <p class="section-tag">Algorithms</p>
+            <h2 id="bh-title">The Barnes-Hut Algorithm</h2>
+            <p>Simulating N bodies under gravity naively requires O(N²) force calculations per timestep — prohibitively expensive for even 10,000 particles. The Barnes-Hut tree algorithm, introduced by Josh Barnes and Piet Hut in 1986, reduces this to O(N log N).</p>
+            <p>The space is recursively subdivided into an octree (or quadtree in 2D). Each internal node stores the total mass and center of mass of all particles in its cell. When computing the force on a particle, distant clusters are treated as single point masses if the cell's angular size falls below a threshold θ (the opening angle). Only nearby cells are expanded for detail.</p>
+            <p>Lowering θ increases accuracy but slows performance; raising it sacrifices some precision for speed. At θ ≈ 0.5–0.7 the results are nearly indistinguishable from direct summation while running orders of magnitude faster — making real-time galaxy simulation possible.</p>
+          </div>
+          <div class="section-visual" aria-hidden="true">
+            <div class="vis-card">
+              <canvas id="bh-canvas" width="240" height="240"></canvas>
+              <p style="font-size:0.78rem;color:var(--muted);text-align:center;max-width:220px">
+                Quadtree subdivision — teal cells are approximated as a single mass; others are expanded
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Our Simulator -->
+        <section class="section-block" id="our-simulator" aria-labelledby="sim-title">
+          <div class="section-text">
+            <p class="section-tag">About This Project</p>
+            <h2 id="sim-title">Our Simulator</h2>
+            <p>This simulator implements N-body gravitational dynamics using a Barnes-Hut octree accelerated by a JavaScript Web Worker, keeping the UI thread smooth at interactive frame rates. Particle integration uses a leapfrog (kick-drift-kick) scheme with adaptive timestep scaling based on local velocities and accelerations.</p>
+            <p>A custom galaxy generator initializes realistic spiral disks with force-matched two-pass velocity initialization, center-of-mass momentum removal, and virial rescaling. Dark matter halos, central black holes, disk and bulge components are all configurable in real time.</p>
+            <p>The renderer uses WebGL for hardware-accelerated particle drawing with additive blending, giving the characteristic luminous glow of dense stellar regions. A 6-degree-of-freedom camera lets you orbit, zoom, and pan through the simulation space freely.</p>
+            <a href="./simulator.html" class="btn-primary" style="display:inline-block;margin-top:1.4rem">
+              Launch Simulator ›
+            </a>
+          </div>
+          <div class="section-visual" aria-hidden="true">
+            <div class="sim-preview">
+              <div class="sim-icon">🌌</div>
+              <p class="sim-preview-label">Live Simulation</p>
+              <ul class="feature-list">
+                <li>Barnes-Hut O(n log n) gravity</li>
+                <li>Leapfrog adaptive integration</li>
+                <li>Dark matter &amp; black holes</li>
+                <li>WebGL additive rendering</li>
+                <li>Real-time parameter tuning</li>
+                <li>6DOF orbital camera</li>
+                <li>Data export &amp; analysis tools</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- /sections -->
+
+      <!-- CTA banner -->
+      <div class="cta-banner">
+        <h2>Ready to explore the cosmos?</h2>
+        <p>Spin up a galaxy, adjust dark matter density, watch spiral arms emerge — all in your browser.</p>
+        <a href="./simulator.html" class="btn-primary">Launch Simulator</a>
+      </div>
+
+    </div><!-- /page -->
+
+    <!-- Footer -->
+    <footer>
+      <span class="footer-logo">GALAXY SIM</span>
+      <span>© 2026 Galaxy Simulator. All rights reserved.</span>
+      <nav aria-label="Footer navigation">
+        <a href="./">Home</a> &nbsp;·&nbsp;
+        <a href="./simulator.html">Simulator</a>
+      </nav>
+    </footer>
+
+    <script>
+      /* ── Starfield ── */
+      (function () {
+        const canvas = document.getElementById("starfield");
+        const ctx = canvas.getContext("2d");
+        let W, H, stars;
+
+        function resize() {
+          W = canvas.width  = window.innerWidth;
+          H = canvas.height = window.innerHeight;
+        }
+
+        function initStars(n) {
+          stars = Array.from({ length: n }, () => ({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            r: Math.random() * 1.2 + 0.2,
+            a: Math.random(),
+            da: (Math.random() - 0.5) * 0.004,
+            vx: (Math.random() - 0.5) * 0.04,
+            vy: (Math.random() - 0.5) * 0.04,
+          }));
+        }
+
+        function draw() {
+          ctx.clearRect(0, 0, W, H);
+          for (const s of stars) {
+            s.a = Math.max(0.1, Math.min(1, s.a + s.da));
+            if (s.a <= 0.1 || s.a >= 1) s.da *= -1;
+            s.x = (s.x + s.vx + W) % W;
+            s.y = (s.y + s.vy + H) % H;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(200,215,255,${s.a})`;
+            ctx.fill();
+          }
+          requestAnimationFrame(draw);
+        }
+
+        resize();
+        initStars(320);
+        window.addEventListener("resize", () => { resize(); initStars(320); });
+        draw();
+      })();
+
+      /* ── Milky Way canvas ── */
+      (function () {
+        const canvas = document.getElementById("milky-way");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        const S = 240, cx = S / 2, cy = S / 2, TAU = Math.PI * 2;
+        const pts = [];
+
+        function gauss() { return (Math.random()+Math.random()+Math.random()+Math.random()-2)/2; }
+
+        function addArm(startAngle, count, b, windTurns, spread, colorFn) {
+          for (let i = 0; i < count; i++) {
+            const t = Math.random();
+            const theta = Math.pow(t, 0.5) * TAU * windTurns;
+            const r = Math.min(10 * Math.exp(b * theta), 108);
+            const perp = (Math.random() - 0.5) * 2 * spread * (0.6 + r * 0.04);
+            const angle = startAngle + theta;
+            const rx = r * Math.cos(angle) + perp * Math.cos(angle + Math.PI / 2);
+            const ry = r * Math.sin(angle) + perp * Math.sin(angle + Math.PI / 2);
+            if (rx*rx + ry*ry > 108*108) continue;
+            pts.push({
+              ox: cx+rx, oy: cy+ry,
+              sz: Math.random()<0.025 ? 1.5 : (Math.random()<0.1 ? 0.85 : 0.42),
+              al: 0.35 + Math.random()*0.65,
+              co: colorFn(t),
+            });
+          }
+        }
+
+        // Central bulge with bar
+        for (let i = 0; i < 700; i++) {
+          const r = Math.abs(gauss()) * 20;
+          const a = Math.random() * TAU;
+          const bar = 1 + Math.exp(-r/7) * 1.3;
+          const br = Math.max(0, 1 - r/20);
+          pts.push({
+            ox: cx + Math.cos(a)*r*bar, oy: cy + Math.sin(a)*r/bar,
+            sz: Math.random()<0.04 ? 1.6 : 0.55,
+            al: 0.45 + br*0.55,
+            co: `rgb(${Math.floor(200+br*55)},${Math.floor(185+br*55)},${Math.floor(130+br*50)})`,
+          });
+        }
+
+        // 4 spiral arms
+        const armHues = [215, 205, 220, 210];
+        for (let arm = 0; arm < 4; arm++) {
+          addArm(arm * TAU/4, 480, 0.24, 1.75, 5,
+            t => `hsl(${armHues[arm]+t*20},${55+t*20}%,${62+t*22}%)`);
+        }
+
+        // Sparse halo
+        for (let i = 0; i < 180; i++) {
+          const r = 50 + Math.random()*60, a = Math.random()*TAU;
+          pts.push({ ox: cx+Math.cos(a)*r, oy: cy+Math.sin(a)*r,
+            sz: 0.3+Math.random()*0.35, al: 0.08+Math.random()*0.18, co: 'rgb(170,185,220)' });
+        }
+
+        let rot = 0;
+        function draw() {
+          ctx.clearRect(0, 0, S, S);
+          rot += 0.004;
+          const cosR = Math.cos(rot), sinR = Math.sin(rot);
+
+          // Outer disk haze
+          const haze = ctx.createRadialGradient(cx,cy,18,cx,cy,100);
+          haze.addColorStop(0,   'rgba(80,100,180,0.09)');
+          haze.addColorStop(0.5, 'rgba(50,70,150,0.06)');
+          haze.addColorStop(1,   'rgba(0,0,0,0)');
+          ctx.fillStyle = haze; ctx.fillRect(0,0,S,S);
+
+          // Core glow
+          const cg = ctx.createRadialGradient(cx,cy,0,cx,cy,30);
+          cg.addColorStop(0,    'rgba(255,245,190,0.95)');
+          cg.addColorStop(0.25, 'rgba(255,210,110,0.55)');
+          cg.addColorStop(0.6,  'rgba(180,140,70,0.18)');
+          cg.addColorStop(1,    'rgba(0,0,0,0)');
+          ctx.fillStyle = cg; ctx.fillRect(0,0,S,S);
+
+          for (const p of pts) {
+            const dx = p.ox-cx, dy = p.oy-cy;
+            const x = cx + dx*cosR - dy*sinR;
+            const y = cy + dx*sinR + dy*cosR;
+            ctx.globalAlpha = p.al;
+            ctx.fillStyle = p.co;
+            ctx.beginPath();
+            ctx.arc(x, y, p.sz, 0, TAU);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+          requestAnimationFrame(draw);
+        }
+        draw();
+      })();
+
+      /* ── Solar system orbits ── */
+      (function () {
+        const container = document.getElementById("orbit-system");
+        if (!container) return;
+        const size = 180;
+        const center = size / 2;
+        const planets = [
+          { r: 28, size: 5,  color: "#c4a97a", period: 3500  },
+          { r: 45, size: 6,  color: "#4f8ef7", period: 5500  },
+          { r: 62, size: 5,  color: "#e06060", period: 9000  },
+          { r: 80, size: 9,  color: "#d4a84b", period: 14000 },
+        ];
+        planets.forEach(p => {
+          const ring = document.createElement("div");
+          ring.className = "orbit-ring";
+          ring.style.cssText = `width:${p.r*2}px;height:${p.r*2}px;`;
+          container.appendChild(ring);
+
+          const dot = document.createElement("div");
+          dot.className = "orbit-planet";
+          dot.style.cssText = `
+            width:${p.size}px;height:${p.size}px;
+            background:${p.color};
+            border-radius:50%;
+            box-shadow:0 0 8px ${p.color}88;
+            position:absolute;
+            top:${center - p.r - p.size/2}px;
+            left:${center - p.size/2}px;
+          `;
+          container.appendChild(dot);
+
+          let angle = Math.random() * Math.PI * 2;
+          (function animate() {
+            angle += (Math.PI * 2) / (p.period / 16);
+            const x = center + Math.cos(angle) * p.r - p.size / 2;
+            const y = center + Math.sin(angle) * p.r - p.size / 2;
+            dot.style.left = x + "px";
+            dot.style.top  = y + "px";
+            requestAnimationFrame(animate);
+          })();
+        });
+      })();
+
+      /* ── Barnes-Hut quadtree canvas (accurate) ── */
+      (function () {
+        const canvas = document.getElementById("bh-canvas");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        const S = 240, TAU = Math.PI * 2, THETA = 0.6;
+
+        const pts = [
+          {x:32, y:28}, {x:55, y:48}, {x:28, y:68}, {x:62, y:22},
+          {x:155,y:25}, {x:175,y:50}, {x:165,y:72},
+          {x:110,y:115},{x:85, y:155},{x:105,y:148},
+          {x:188,y:145},{x:205,y:185},{x:178,y:200},
+          {x:45, y:185},{x:70, y:200},
+        ];
+
+        // ── Build tree ──────────────────────────────────────────────
+        function buildNode(x, y, w, h, bodies) {
+          if (bodies.length === 0) return null;
+          // Compute center of mass
+          let cx = 0, cy = 0;
+          for (const b of bodies) { cx += b.x; cy += b.y; }
+          cx /= bodies.length; cy /= bodies.length;
+          const node = { x, y, w, h, cx, cy, m: bodies.length, children: null, leaf: false, bodies };
+          if (bodies.length === 1) { node.leaf = true; return node; }
+          // Subdivide into 4 quadrants
+          const hx = w / 2, hy = h / 2;
+          const quads = [
+            bodies.filter(b => b.x < x+hx && b.y < y+hy),
+            bodies.filter(b => b.x >= x+hx && b.y < y+hy),
+            bodies.filter(b => b.x < x+hx && b.y >= y+hy),
+            bodies.filter(b => b.x >= x+hx && b.y >= y+hy),
+          ];
+          const offsets = [[0,0],[hx,0],[0,hy],[hx,hy]];
+          node.children = quads.map((q, i) =>
+            q.length ? buildNode(x+offsets[i][0], y+offsets[i][1], hx, hy, q) : null
+          ).filter(Boolean);
+          return node;
+        }
+
+        const root = buildNode(1, 1, S-2, S-2, pts);
+
+        // ── Barnes-Hut traversal ─────────────────────────────────────
+        // Returns {accepted, expanded, skipped} node sets for a query point
+        function bhQuery(qp) {
+          const accepted = [], expanded = [];
+          function traverse(node) {
+            if (!node) return;
+            // Skip the leaf that IS the query particle
+            if (node.leaf && node.bodies[0] === qp) return;
+            const dx = node.cx - qp.x, dy = node.cy - qp.y;
+            const dist = Math.sqrt(dx*dx + dy*dy) || 0.001;
+            const ratio = Math.max(node.w, node.h) / dist;
+            if (node.leaf || ratio < THETA) {
+              accepted.push(node);
+            } else {
+              expanded.push(node);
+              for (const c of node.children) traverse(c);
+            }
+          }
+          traverse(root);
+          return { accepted, expanded };
+        }
+
+        // ── Collect all nodes for drawing grid ───────────────────────
+        function allNodes(node, out = []) {
+          if (!node) return out;
+          out.push(node);
+          if (node.children) for (const c of node.children) allNodes(c, out);
+          return out;
+        }
+        const nodes = allNodes(root);
+
+        let queryIdx = 0, tick = 0;
+
+        function draw() {
+          tick++;
+          if (tick % 100 === 0) queryIdx = (queryIdx + 1) % pts.length;
+          const qp = pts[queryIdx];
+          const { accepted, expanded } = bhQuery(qp);
+          const acceptedSet = new Set(accepted);
+          const expandedSet = new Set(expanded);
+
+          ctx.clearRect(0, 0, S, S);
+
+          // 1. Draw all node borders (faint blue grid)
+          ctx.lineWidth = 0.5;
+          for (const n of nodes) {
+            ctx.strokeStyle = 'rgba(79,142,247,0.20)';
+            ctx.strokeRect(n.x, n.y, n.w, n.h);
+          }
+
+          // 2. Expanded nodes — no special highlight, just the base grid
+
+          // 3. Accepted nodes (teal) — approximate as single mass
+          for (const n of acceptedSet) {
+            ctx.fillStyle = 'rgba(0,210,170,0.10)';
+            ctx.fillRect(n.x, n.y, n.w, n.h);
+            ctx.strokeStyle = 'rgba(0,210,170,0.70)';
+            ctx.lineWidth = 1.2;
+            ctx.strokeRect(n.x, n.y, n.w, n.h);
+            // Draw CoM dot
+            ctx.beginPath();
+            ctx.arc(n.cx, n.cy, 2.5, 0, TAU);
+            ctx.fillStyle = 'rgba(0,210,170,0.9)';
+            ctx.fill();
+            // Faint line from query → CoM
+            ctx.beginPath();
+            ctx.moveTo(qp.x, qp.y);
+            ctx.lineTo(n.cx, n.cy);
+            ctx.strokeStyle = `rgba(0,210,170,${0.08 + 0.06*Math.sin(tick*0.05)})`;
+            ctx.lineWidth = 0.7;
+            ctx.stroke();
+          }
+
+          // 4. Particles
+          for (const p of pts) {
+            const isQ = p === qp;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, isQ ? 5 : 2.8, 0, TAU);
+            if (isQ) {
+              ctx.fillStyle = `rgba(255,230,60,${0.8 + 0.2*Math.sin(tick*0.09)})`;
+              ctx.shadowColor = '#ffe03c'; ctx.shadowBlur = 14;
+            } else {
+              ctx.fillStyle = 'rgba(180,205,255,0.88)';
+            }
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+
+          // 5. θ label
+          ctx.font = '10px Inter,sans-serif';
+          ctx.fillStyle = 'rgba(0,210,170,0.80)';
+          ctx.fillText('■ accepted (approx as CoM)', 6, S-13);
+
+          requestAnimationFrame(draw);
+        }
+        requestAnimationFrame(draw);
+      })();
+    </script>
   </body>
 </html>
