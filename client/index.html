@@ -462,7 +462,7 @@
       <section class="hero" aria-labelledby="hero-title">
         <p class="hero-eyebrow">Interactive Space Physics</p>
         <h1 id="hero-title">Simulate the Universe</h1>
-        <p>Explore the forces that shaped galaxies, solar systems, and everything in between — powered by real gravitational physics and real-time simulation.</p>
+        <p>Explore the forces that shaped galaxies, solar systems, and everything in between powered by real gravitational physics and real time simulation.</p>
         <div class="hero-buttons">
           <a href="./simulator.html" class="btn-primary">Launch Simulator</a>
           <a href="#galaxy-formation" class="btn-outline">Learn More</a>
@@ -494,15 +494,15 @@
           <div class="section-text">
             <p class="section-tag">Cosmology</p>
             <h2 id="gf-title">Galaxy Formation</h2>
-            <p>Galaxies are the fundamental building blocks of the large-scale universe. They form when gravity causes vast clouds of hydrogen and helium — left over from the Big Bang — to collapse and fragment into dense stellar nurseries over hundreds of millions of years.</p>
-            <p>Dark matter plays a critical role: its gravitational scaffolding draws in ordinary baryonic matter, seeding the first protogalactic clumps. As these collapse, conservation of angular momentum spins the infalling gas into a rotating disk, while feedback from supernovae and active galactic nuclei (AGN) regulate star formation.</p>
-            <p>At the center of most large galaxies lurks a supermassive black hole — millions to billions of solar masses — whose tidal influence and jet activity profoundly shapes galaxy morphology and star formation history over cosmic time.</p>
+            <p>Galaxies are the fundamental building blocks of the large scale universe. They form when gravity causes vast clouds of hydrogen and helium left over from the Big Bang to collapse and fragment into dense stellar nurseries over hundreds of millions of years.</p>
+            <p>Dark matter plays a critical role: its gravitational scaffolding draws in ordinary baryonic matter, seeding the first protogalactic clumps. As these collapse, conservation of angular momentum spins the infalling gas into a rotating disk, while feedback from supernovae and active galactic nuclei regulate star formation.</p>
+            <p>At the center of most large galaxies lurks a supermassive black hole that is millions to billions of solar masses whose tidal influence and jet activity profoundly shapes galaxy morphology and star formation history over cosmic time.</p>
           </div>
           <div class="section-visual" aria-hidden="true">
             <div class="vis-card">
               <canvas id="milky-way" width="240" height="240"></canvas>
               <p style="font-size:0.78rem;color:var(--muted);text-align:center;max-width:200px">
-                Spiral galaxy structure: bulge, disk, arms, and dark matter halo
+                Galaxy
               </p>
             </div>
           </div>
@@ -513,9 +513,9 @@
           <div class="section-text">
             <p class="section-tag">Planetary Science</p>
             <h2 id="ss-title">Solar System Formation</h2>
-            <p>Our solar system formed roughly 4.6 billion years ago from a cold, rotating molecular cloud — a solar nebula — triggered into collapse, possibly by a nearby supernova shockwave. Gravity drew most of the mass to the center, igniting a protostar that would become the Sun.</p>
+            <p>Our solar system formed roughly 4.6 billion years ago from a hot dense, rotating molecular cloud, a solar nebula triggered into collapse, possibly by a nearby supernova shockwave. Gravity drew most of the mass to the center, igniting a protostar that would become the Sun.</p>
             <p>The remaining gas and dust flattened into a protoplanetary disk. Within this disk, tiny dust grains collided and stuck together, growing into centimeter-sized pebbles, then kilometer-scale planetesimals, and eventually rocky protoplanets. This accretion process is governed by gravitational focusing, relative velocities, and material strength.</p>
-            <p>The frost line — the boundary beyond which volatile ices condense — divided the disk into an inner terrestrial zone (rocky planets) and an outer giant planet zone. Jupiter's rapid growth disrupted the asteroid belt and may have deflected water-rich carbonaceous asteroids inward, seeding Earth with its oceans.</p>
+            <p>The frost line which is the boundary beyond which volatile ices condense, divided the disk into an inner terrestrial zone (rocky planets) and an outer giant planet zone (gas planets). Jupiter's rapid growth disrupted the asteroid belt and may have deflected water rich carbonaceous asteroids inward, seeding Earth with its oceans.</p>
           </div>
           <div class="section-visual" aria-hidden="true">
             <div class="vis-card">
@@ -524,7 +524,7 @@
                 <!-- Rings and planets injected by JS -->
               </div>
               <p style="font-size:0.78rem;color:var(--muted);text-align:center;max-width:200px">
-                Protoplanetary disk: orbital resonances and accretion zones
+                Solar System
               </p>
             </div>
           </div>
@@ -535,15 +535,15 @@
           <div class="section-text">
             <p class="section-tag">Algorithms</p>
             <h2 id="bh-title">The Barnes-Hut Algorithm</h2>
-            <p>Simulating N bodies under gravity naively requires O(N²) force calculations per timestep — prohibitively expensive for even 10,000 particles. The Barnes-Hut tree algorithm, introduced by Josh Barnes and Piet Hut in 1986, reduces this to O(N log N).</p>
+            <p>Simulating N bodies under gravity naively requires O(N²) force calculations per timestep which is prohibitively expensive for even 10,000 particles. The Barnes-Hut tree algorithm, introduced by Josh Barnes and Piet Hut in 1986, reduces this to O(N log N).</p>
             <p>The space is recursively subdivided into an octree (or quadtree in 2D). Each internal node stores the total mass and center of mass of all particles in its cell. When computing the force on a particle, distant clusters are treated as single point masses if the cell's angular size falls below a threshold θ (the opening angle). Only nearby cells are expanded for detail.</p>
-            <p>Lowering θ increases accuracy but slows performance; raising it sacrifices some precision for speed. At θ ≈ 0.5–0.7 the results are nearly indistinguishable from direct summation while running orders of magnitude faster — making real-time galaxy simulation possible.</p>
+            <p>Lowering θ increases accuracy but slows performance; raising it sacrifices some precision for speed. At θ ≈ 0.5-0.7 the results are nearly indistinguishable from direct summation while running orders of magnitude faster, making real-time galaxy simulation possible.</p>
           </div>
           <div class="section-visual" aria-hidden="true">
             <div class="vis-card">
               <canvas id="bh-canvas" width="240" height="240"></canvas>
               <p style="font-size:0.78rem;color:var(--muted);text-align:center;max-width:220px">
-                Quadtree subdivision — teal cells are approximated as a single mass; others are expanded
+                Quadtree subdivision where teal cells are approximated as a single mass.
               </p>
             </div>
           </div>
@@ -554,12 +554,9 @@
           <div class="section-text">
             <p class="section-tag">About This Project</p>
             <h2 id="sim-title">Our Simulator</h2>
-            <p>This simulator implements N-body gravitational dynamics using a Barnes-Hut octree accelerated by a JavaScript Web Worker, keeping the UI thread smooth at interactive frame rates. Particle integration uses a leapfrog (kick-drift-kick) scheme with adaptive timestep scaling based on local velocities and accelerations.</p>
-            <p>A custom galaxy generator initializes realistic spiral disks with force-matched two-pass velocity initialization, center-of-mass momentum removal, and virial rescaling. Dark matter halos, central black holes, disk and bulge components are all configurable in real time.</p>
-            <p>The renderer uses WebGL for hardware-accelerated particle drawing with additive blending, giving the characteristic luminous glow of dense stellar regions. A 6-degree-of-freedom camera lets you orbit, zoom, and pan through the simulation space freely.</p>
-            <a href="./simulator.html" class="btn-primary" style="display:inline-block;margin-top:1.4rem">
-              Launch Simulator ›
-            </a>
+            <p>This simulator implements N-body gravitational dynamics using a Barnes-Hut octree in JavaScript. Particle integration uses an adaptive timestep scaling based on local velocities and accelerations.</p>
+            <p>A custom galaxy generator initializes realistic spiral disks with force and velocity initialization, center of mass momentum removal, and virial rescaling. Dark matter halos, central black holes, disk and bulge components are all configurable in real time.</p>
+            <p>The renderer uses WebGL for hardware accelerated particle drawing with additive blending, giving the characteristic luminous glow of dense stellar regions. A 6-degree-of-freedom camera lets you orbit, zoom, and pan through the simulation space freely.</p>
           </div>
           <div class="section-visual" aria-hidden="true">
             <div class="sim-preview">
@@ -567,12 +564,11 @@
               <p class="sim-preview-label">Live Simulation</p>
               <ul class="feature-list">
                 <li>Barnes-Hut O(n log n) gravity</li>
-                <li>Leapfrog adaptive integration</li>
+                <li>Adaptive timestep integration</li>
                 <li>Dark matter &amp; black holes</li>
                 <li>WebGL additive rendering</li>
-                <li>Real-time parameter tuning</li>
+                <li>Real time parameter tuning</li>
                 <li>6DOF orbital camera</li>
-                <li>Data export &amp; analysis tools</li>
               </ul>
             </div>
           </div>
@@ -583,7 +579,7 @@
       <!-- CTA banner -->
       <div class="cta-banner">
         <h2>Ready to explore the cosmos?</h2>
-        <p>Spin up a galaxy, adjust dark matter density, watch spiral arms emerge — all in your browser.</p>
+        <p>Start up a galaxy or a solar system, adjust the different parameters, and watch your creations emerge in this interactive physics simulation.</p>
         <a href="./simulator.html" class="btn-primary">Launch Simulator</a>
       </div>
 
@@ -593,10 +589,6 @@
     <footer>
       <span class="footer-logo">GALAXY SIM</span>
       <span>© 2026 Galaxy Simulator. All rights reserved.</span>
-      <nav aria-label="Footer navigation">
-        <a href="./">Home</a> &nbsp;·&nbsp;
-        <a href="./simulator.html">Simulator</a>
-      </nav>
     </footer>
 
     <script>
@@ -909,11 +901,6 @@
             ctx.fill();
             ctx.shadowBlur = 0;
           }
-
-          // 5. θ label
-          ctx.font = '10px Inter,sans-serif';
-          ctx.fillStyle = 'rgba(0,210,170,0.80)';
-          ctx.fillText('■ accepted (approx as CoM)', 6, S-13);
 
           requestAnimationFrame(draw);
         }

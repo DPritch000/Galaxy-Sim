@@ -48,7 +48,7 @@ export function setupPanels(settings, onSettingsChange, onApplyCloudCollapse, on
     <div class="panel-tabs" role="tablist" aria-label="Right panel tabs">
       <button class="panel-tab is-active" id="tab-controls" type="button" role="tab" aria-controls="tab-pane-controls" aria-selected="true" data-tab-target="controls">Controls</button>
       <button class="panel-tab" id="tab-formation" type="button" role="tab" aria-controls="tab-pane-formation" aria-selected="false" data-tab-target="formation">Galaxy Formation</button>
-      <button class="panel-tab" id="tab-planets" type="button" role="tab" aria-controls="tab-pane-planets" aria-selected="false" data-tab-target="planets">Planets</button>
+      <button class="panel-tab" id="tab-planets" type="button" role="tab" aria-controls="tab-pane-planets" aria-selected="false" data-tab-target="planets">Solar System</button>
     </div>
 
     <section class="tab-pane is-active" id="tab-pane-controls" role="tabpanel" aria-labelledby="tab-controls" data-tab-pane="controls">
@@ -96,8 +96,8 @@ export function setupPanels(settings, onSettingsChange, onApplyCloudCollapse, on
     </section>
 
     <section class="tab-pane" id="tab-pane-planets" role="tabpanel" aria-labelledby="tab-planets" data-tab-pane="planets">
-      <h4 class="panel-title">Planetary Orbits</h4>
-      <p class="panel-copy">Simulate planets orbiting a central star. Adjust parameters and start the simulation.</p>
+      <h4 class="panel-title">Solar System</h4>
+      <p class="panel-copy">Simulate a solar system with planets orbiting a central star. Adjust parameters and start the simulation.</p>
       <label class="field-row">
         <span>Star Mass</span>
         <input id="starMass" type="range" min="0.1" max="5" step="0.1" value="${settings.starMass || 1.0}" />
@@ -108,7 +108,7 @@ export function setupPanels(settings, onSettingsChange, onApplyCloudCollapse, on
         <input id="planetCount" type="range" min="1" max="100" step="1" value="${settings.planetCount || 8}" />
         <strong data-value-for="planetCount">${settings.planetCount || 8}</strong>
       </label>
-      <button id="planets-start" class="panel-button" type="button">Start Planet Simulation</button>
+      <button id="planets-start" class="panel-button" type="button">Start Solar System</button>
     </section>
   `;
 
