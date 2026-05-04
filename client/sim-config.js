@@ -13,12 +13,12 @@ export const SIM_CONFIG = {
     haloCoreRadius: 170
   },
   defaults: {
-    particleCount: 5000,
+    particleCount: 10000,
     gravityStrength: 6,
     blackHoleStrength: 60,
-    darkMatterStrength: 2200,
+    darkMatterStrength: 3000,
     armTightness: 2.8,
-    timeScale: 0.12,
+    timeScale: 1.00,
     barnesHutTheta: 0.85
   }
 };
